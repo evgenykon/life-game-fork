@@ -51,6 +51,66 @@ const ownerColorMap = computed(() => {
   return map
 })
 
+const DIRS = [
+  { x: 0, y: -1 },
+  { x: 0, y: 1 },
+  { x: -1, y: 0 },
+  { x: 1, y: 0 },
+]
+
+function manhattan(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+}
+
+const expandTargets = computed(() => {
+  const targets: Record<string, { x: number; y: number }> = {}
+  if (!props.cells) return targets
+  const width = props.cells[0]?.length ?? 0
+  const height = props.cells.length
+
+  for (const race of props.races) {
+    if (!race.alive) continue
+
+    const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))
+    const candidates: Array<{ x: number; y: number }> = []
+
+    for (const pos of race.controlledCells) {
+      for (const dir of DIRS) {
+        const nx = pos.x + dir.x
+        const ny = pos.y + dir.y
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+        const key = `${nx},${ny}`
+        if (ownedSet.has(key)) continue
+
+        const cell = props.cells[ny]?.[nx]
+        if (!cell || cell.ownerId !== null || cell.type !== CellType.RESOURCE || cell.captureProgress > 0) continue
+
+        if (!candidates.some((c) => c.x === nx && c.y === ny)) {
+          candidates.push({ x: nx, y: ny })
+        }
+      }
+    }
+
+    if (candidates.length === 0) continue
+
+    const bases = race.baseCells
+    let best = candidates[0]!
+    let bestDist = -1
+    for (const c of candidates) {
+      for (const b of bases) {
+        const d = manhattan(b, c)
+        if (d > bestDist) {
+          bestDist = d
+          best = c
+        }
+      }
+    }
+    targets[race.id] = best
+  }
+
+  return targets
+})
+
 async function renderIcon(iconName: string, size: number, color: string): Promise<HTMLCanvasElement> {
   const cacheKey = `v3-${iconName}-${size}-${color}`
   if (iconCache.has(cacheKey)) return iconCache.get(cacheKey)!
@@ -135,6 +195,11 @@ function drawGrid() {
   }
 
   if (props.cells) {
+    const targetSet = new Set<string>()
+    for (const pos of Object.values(expandTargets.value)) {
+      targetSet.add(`${pos.x},${pos.y}`)
+    }
+
     for (let y = 0; y < props.cells.length && y < GRID_SIZE; y++) {
       const row = props.cells[y]
       if (!row) continue
@@ -152,14 +217,54 @@ function drawGrid() {
           ctx.strokeRect(x * size + 0.5, y * size + 0.5, size - 1, size - 1)
         }
 
+        if (targetSet.has(`${x},${y}`)) {
+          const raceId = Object.keys(expandTargets.value).find(
+            (id) => expandTargets.value[id]!.x === x && expandTargets.value[id]!.y === y
+          )
+          const color = raceId ? ownerColorMap.value[raceId]?.color : null
+          if (color) {
+            ctx.strokeStyle = color
+            ctx.lineWidth = 2
+            ctx.setLineDash([4, 4])
+            ctx.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2)
+            ctx.setLineDash([])
+          }
+        }
+
+        if (cell.captureProgress > 0 && cell.captureCost > 0) {
+          const captureColor = cell.capturedBy ? ownerColorMap.value[cell.capturedBy]?.color ?? "#fff" : "#fff"
+          ctx.fillStyle = captureColor
+          const barW = Math.max(2, size - 4)
+          const barH = 3
+          const filled = (cell.captureProgress / cell.captureCost) * barW
+          ctx.fillRect(x * size + 2, y * size + size - barH - 2, filled, barH)
+          ctx.strokeStyle = captureColor
+          ctx.lineWidth = 1
+          ctx.setLineDash([])
+          ctx.strokeRect(x * size + 2, y * size + size - barH - 2, barW, barH)
+        }
+
+        if (cell.fabricOwnerId && !cell.fabricComplete && cell.fabricCost > 0) {
+          const fabColor = ownerColorMap.value[cell.fabricOwnerId]?.color ?? "#fff"
+          const barW = Math.max(2, size - 4)
+          const barH = 2
+          const filled = (cell.fabricProgress / cell.fabricCost) * barW
+          ctx.fillStyle = fabColor
+          ctx.globalAlpha = 0.6
+          ctx.fillRect(x * size + 2, y * size + 2, filled, barH)
+          ctx.globalAlpha = 1
+        }
+
         const icon = cell.type === CellType.BASE
           ? "i-mdi-home"
-          : cell.resourceType
-            ? RESOURCE_ICONS[cell.resourceType]
-            : null
+          : cell.fabricComplete
+            ? "i-mdi-factory"
+            : cell.resourceType
+              ? RESOURCE_ICONS[cell.resourceType]
+              : null
 
         if (icon && size >= 8) {
-          const color = cell.type === CellType.BASE && ownerColor
+          const color = (cell.type === CellType.BASE || cell.fabricComplete) && ownerColor
             ? ownerColor.color
             : ICON_COLORS[icon] ?? "rgba(255,255,255,0.7)"
           renderIcon(icon, size, color).then((iconCanvas) => {
@@ -202,13 +307,17 @@ const tooltipText = computed(() => {
   const lines: string[] = []
   if (cell.type === CellType.BASE) lines.push("База")
   else if (cell.resourceType) lines.push(cell.resourceType)
+  if (cell.captureProgress > 0 && cell.captureCost > 0) lines.push(`Захват: ${cell.captureProgress}/${cell.captureCost}`)
   if (cell.resourceAmount > 0) lines.push(`Ресурс: ${cell.resourceAmount}`)
-  if (cell.fabricOwnerId) lines.push(`Фабрика: ${cell.fabricProgress}/${cell.fabricCost}`)
+  if (cell.fabricOwnerId) {
+    if (cell.fabricComplete) lines.push("Фабрика: готова")
+    else lines.push(`Фабрика: ${cell.fabricProgress}/${cell.fabricCost}`)
+  }
   if (cell.ownerId) lines.push(`Владелец: ${cell.ownerId}`)
   return lines.join("\n")
 })
 
-watch([resolvedCellSize, containerWidth, containerHeight, () => props.cells, ownerColorMap], drawGrid, { flush: "post" })
+watch([resolvedCellSize, containerWidth, containerHeight, () => props.cells, ownerColorMap, expandTargets], drawGrid, { flush: "post" })
 
 onMounted(() => {
   iconCache.clear()

@@ -47,6 +47,30 @@ export const MIN_RACE_DISTANCE = 4
 export const RACE_MAINTENANCE = { meal: 3, water: 2, material: 1 }
 export const DEPLETION_RECOVERY_CYCLES = 10
 
+export const RESOURCE_FABRIC_COST: Record<ResourceType, number | null> = {
+  [ResourceType.FIELD]: 5,
+  [ResourceType.FOREST]: 5,
+  [ResourceType.GRUNT]: null,
+  [ResourceType.ROCK]: 10,
+  [ResourceType.MINERAL]: 10,
+  [ResourceType.SWAMP]: 10,
+  [ResourceType.SAND]: null,
+  [ResourceType.SNOW]: 10,
+  [ResourceType.WATER]: 5,
+}
+
+export const RESOURCE_CAPTURE_COST: Record<ResourceType, number> = {
+  [ResourceType.FIELD]: 5,
+  [ResourceType.FOREST]: 5,
+  [ResourceType.GRUNT]: 1,
+  [ResourceType.ROCK]: 10,
+  [ResourceType.MINERAL]: 10,
+  [ResourceType.SWAMP]: 10,
+  [ResourceType.SAND]: 1,
+  [ResourceType.SNOW]: 10,
+  [ResourceType.WATER]: 5,
+}
+
 export const RESOURCE_YIELDS: Record<ResourceType, { meal: number; water: number; material: number }> = {
   [ResourceType.FIELD]: { meal: 2, water: 0, material: 0 },
   [ResourceType.FOREST]: { meal: 1, water: 0, material: 1 },
@@ -73,6 +97,9 @@ export interface CellData {
   fabricProgress: number
   fabricCost: number
   fabricComplete: boolean
+  captureProgress: number
+  captureCost: number
+  capturedBy: string | null
   attackProgress: number
   attackedBy: string | null
   depletionCycles: number

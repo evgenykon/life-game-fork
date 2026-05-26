@@ -1,8 +1,61 @@
-import { CellType, RESOURCE_YIELDS, RACE_MAINTENANCE, DEPLETION_RECOVERY_CYCLES, RESOURCE_AMOUNT } from "~/utils/game-types"
+import { CellType, RESOURCE_YIELDS, RACE_MAINTENANCE, DEPLETION_RECOVERY_CYCLES, RESOURCE_AMOUNT, RESOURCE_CAPTURE_COST, RESOURCE_FABRIC_COST } from "~/utils/game-types"
 import type { CellData, RaceData, MapMeta, Position } from "~/utils/game-types"
+
+const DIRS: Position[] = [
+  { x: 0, y: -1 },
+  { x: 0, y: 1 },
+  { x: -1, y: 0 },
+  { x: 1, y: 0 },
+]
 
 function manhattan(a: Position, b: Position): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+}
+
+function findExpandTarget(
+  race: RaceData,
+  cells: CellData[][],
+  width: number,
+  height: number
+): Position | null {
+  const candidates: Position[] = []
+  const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))
+
+  for (const pos of race.controlledCells) {
+    for (const dir of DIRS) {
+      const nx = pos.x + dir.x
+      const ny = pos.y + dir.y
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+
+      const key = `${nx},${ny}`
+      if (ownedSet.has(key)) continue
+
+      const cell = cells[ny]?.[nx]
+      if (!cell || cell.type !== CellType.RESOURCE) continue
+      if (cell.ownerId !== null) continue
+      if (cell.captureProgress > 0) continue
+
+      if (!candidates.some((c) => c.x === nx && c.y === ny)) {
+        candidates.push({ x: nx, y: ny })
+      }
+    }
+  }
+
+  if (candidates.length === 0) return null
+
+  const bases = race.baseCells
+  let best = candidates[0]!
+  let bestDist = -1
+  for (const c of candidates) {
+    for (const b of bases) {
+      const d = manhattan(b, c)
+      if (d > bestDist) {
+        bestDist = d
+        best = c
+      }
+    }
+  }
+  return best
 }
 
 function findCellToStrip(
@@ -59,6 +112,48 @@ export function processTurn(
   for (const race of newRaces) {
     if (!race.alive) continue
 
+    const width = newCells[0]?.length ?? 0
+    const height = newCells.length
+
+    const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))
+    let capturePos: Position | null = null
+    for (const pos of race.controlledCells) {
+      for (const dir of DIRS) {
+        const nx = pos.x + dir.x
+        const ny = pos.y + dir.y
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+        const cell = newCells[ny]?.[nx]
+        if (cell && cell.captureProgress > 0 && cell.captureCost > 0 && cell.ownerId === null) {
+          capturePos = { x: nx, y: ny }
+          break
+        }
+      }
+      if (capturePos) break
+    }
+
+    if (capturePos) {
+      const cell = newCells[capturePos.y]![capturePos.x]!
+      cell.captureProgress++
+      if (cell.captureProgress >= cell.captureCost) {
+        cell.ownerId = race.id
+        cell.captureProgress = 0
+        cell.captureCost = 0
+        cell.capturedBy = null
+        race.controlledCells.push(capturePos)
+      }
+    } else {
+      const target = findExpandTarget(race, newCells, width, height)
+      if (target) {
+        const cell = newCells[target.y]![target.x]!
+        const cost = cell.resourceType ? RESOURCE_CAPTURE_COST[cell.resourceType] : 1
+        if (cost > 0) {
+          cell.captureProgress = 1
+          cell.captureCost = cost
+          cell.capturedBy = race.id
+        }
+      }
+    }
+
     for (const pos of race.controlledCells) {
       const cell = newCells[pos.y]?.[pos.x]
       if (!cell || cell.isDepleted) continue
@@ -75,6 +170,51 @@ export function processTurn(
         cell.resourceAmount = 0
         cell.isDepleted = true
         cell.depletionCycles = 0
+      }
+    }
+
+    let activeFabricProgress: Position | null = null
+    for (const pos of race.controlledCells) {
+      const cell = newCells[pos.y]?.[pos.x]
+      if (cell && cell.fabricOwnerId === race.id && !cell.fabricComplete) {
+        activeFabricProgress = pos
+        break
+      }
+    }
+
+    if (activeFabricProgress) {
+      const cell = newCells[activeFabricProgress.y]![activeFabricProgress.x]!
+      if (race.resources.material >= 1) {
+        race.resources.material -= 1
+        cell.fabricProgress++
+        if (cell.fabricProgress >= cell.fabricCost) {
+          cell.fabricComplete = true
+        }
+      }
+    } else if (race.resources.material > 10) {
+      let bestCell: { pos: Position; cell: CellData } | null = null
+      for (const pos of race.controlledCells) {
+        const cell = newCells[pos.y]?.[pos.x]
+        if (!cell || cell.fabricOwnerId || cell.type !== CellType.RESOURCE || !cell.resourceType) continue
+        const cost = RESOURCE_FABRIC_COST[cell.resourceType]
+        if (cost === null || cost <= 0) continue
+        if (!bestCell) {
+          bestCell = { pos, cell }
+        } else {
+          const a = RESOURCE_YIELDS[cell.resourceType]
+          const b = RESOURCE_YIELDS[bestCell.cell.resourceType!]
+          if (a.meal + a.water > b.meal + b.water) {
+            bestCell = { pos, cell }
+          }
+        }
+      }
+      if (bestCell) {
+        const { pos, cell } = bestCell
+        const cost = RESOURCE_FABRIC_COST[cell.resourceType!]!
+        cell.fabricOwnerId = race.id
+        cell.fabricProgress = 0
+        cell.fabricCost = cost
+        cell.fabricComplete = false
       }
     }
 
@@ -97,6 +237,9 @@ export function processTurn(
         cell.fabricProgress = 0
         cell.fabricCost = 0
         cell.fabricComplete = false
+        cell.captureProgress = 0
+        cell.captureCost = 0
+        cell.capturedBy = null
 
         if (isBase) {
           cell.type = CellType.RESOURCE
