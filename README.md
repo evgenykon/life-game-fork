@@ -1,5 +1,7 @@
 # 'Life Game' 
 
+**Live demo:** [evgenykon.github.io/life-game-fork](https://evgenykon.github.io/life-game-fork/)
+
 ## Description
 
 Sample project with Vue.js and SCSS just for fun :)
