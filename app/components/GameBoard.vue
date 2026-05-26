@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import type { GameAction } from "~/utils/game-engine"
+
 const props = defineProps<{
   map: Cell[][]
   selectedAction: GameAction["type"] | null
   isWaitingAction: boolean
+  cellSize: number | "fit"
 }>()
 
 const emit = defineEmits<{
@@ -14,35 +17,52 @@ function handleCellClick(pos: Position) {
 }
 
 const gridSize = computed(() => props.map[0]?.length ?? 1)
+const gridHeight = computed(() => props.map.length ?? 1)
 
 const containerRef = ref<HTMLElement | null>(null)
-const gridHeight = ref(0)
+const containerWidth = ref(0)
+const containerHeight = ref(0)
 
-function updateGridSize() {
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+
+function updateSize() {
   if (containerRef.value) {
-    gridHeight.value = containerRef.value.clientWidth
+    const w = containerRef.value.clientWidth
+    const h = containerRef.value.clientHeight
+    if (Math.abs(w - containerWidth.value) > 2 || Math.abs(h - containerHeight.value) > 2) {
+      containerWidth.value = w
+      containerHeight.value = h
+    }
   }
 }
 
 onMounted(() => {
-  updateGridSize()
-  const observer = new ResizeObserver(updateGridSize)
+  updateSize()
+  const observer = new ResizeObserver(() => {
+    if (resizeTimer) clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(updateSize, 100)
+  })
   if (containerRef.value) observer.observe(containerRef.value)
-  onUnmounted(() => observer.disconnect())
+  onUnmounted(() => {
+    observer.disconnect()
+    if (resizeTimer) clearTimeout(resizeTimer)
+  })
 })
+
+const { getResolvedCellSize } = useZoom()
+
+const resolvedCellSize = computed(() =>
+  getResolvedCellSize(containerWidth.value, containerHeight.value, gridSize.value, gridHeight.value),
+)
 </script>
 
 <template>
-  <div
-    ref="containerRef"
-    class="h-full overflow-auto bg-black"
-  >
+  <div ref="containerRef" class="h-full w-full overflow-auto bg-black">
     <div
       class="grid"
       :style="{
-        height: gridHeight + 'px',
-        gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-        gridTemplateRows: `repeat(${gridSize}, 1fr)`,
+        gridTemplateColumns: `repeat(${gridSize}, ${resolvedCellSize}px)`,
+        gridTemplateRows: `repeat(${gridHeight}, ${resolvedCellSize}px)`,
       }"
     >
       <template v-for="(row, y) in map" :key="y">
@@ -50,6 +70,7 @@ onMounted(() => {
           v-for="(cell, x) in row"
           :key="`${x}-${y}`"
           :cell="cell"
+          :cell-size="resolvedCellSize"
           :is-selected-action="isWaitingAction && selectedAction !== null"
           @click="handleCellClick"
         />
@@ -57,3 +78,9 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.grid > * {
+  border: 1px dashed rgba(161, 98, 7, 0.3);
+}
+</style>

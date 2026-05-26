@@ -3,7 +3,8 @@
 ## Rules
 
 - **Never** run `npm` commands outside Docker container — use `make dev` / `make build` instead
-- **Never** run `npm run build` or `npx nuxi typecheck` unless explicitly asked — dev mode hot-reload handles changes
+- **Never** run `npm run build`, `npx nuxi typecheck`, or `yarn build` unless explicitly asked — dev mode hot-reload handles changes
+- **Always** use `yarn` (not npm) to add/remove packages
 - **Never** commit or create PRs without explicit user approval
 - **Never** force-push, amend commits, or rewrite git history
 
@@ -12,7 +13,7 @@
 - **Framework:** Nuxt 4 (compat), Vue 3, TypeScript 6
 - **Styling:** Tailwind CSS 4 (`@nuxtjs/tailwindcss`, `@tailwindcss/vite`)
 - **Modules:** color-mode, i18n, vueuse, motion-v, nuxt/icon, nuxt/fonts
-- **Package manager:** npm
+- **Package manager:** yarn
 
 ## Commands
 
@@ -24,7 +25,7 @@
 | `make run cmd="<script>"` | Run any npm script inside container |
 | `make run cmd="npm run generate"` | Static site generation |
 | `make run cmd="npm run preview"` | Preview production build |
-| `make run cmd="npx nuxt prepare"` | Generate Nuxt types |
+| `make run cmd="yarn nuxt prepare"` | Generate Nuxt types |
 
 ## Code conventions
 
