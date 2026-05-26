@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ResourceType } from "~/utils/game-types"
 
-const { mapHash, mapWidth, mapHeight, cells, races, meta, isRunning, isPaused, startGame, loadFromHash, togglePause } = useGameState()
+const { cells, races, meta, isRunning, isPaused, startGame, togglePause } = useGameState()
 const { cellSize } = useZoom()
 
 const settingsWidth = ref(20)
@@ -25,11 +25,6 @@ onMounted(() => {
   const observer = new ResizeObserver(updateEmptyGridSize)
   if (emptyGridRef.value) observer.observe(emptyGridRef.value)
   onUnmounted(() => observer.disconnect())
-
-  const hash = window.location.hash.slice(1)
-  if (hash && hash.length === 16) {
-    loadFromHash(hash, settingsWidth.value, settingsHeight.value)
-  }
 })
 
 const emptyCellSize = computed(() => {

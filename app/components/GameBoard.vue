@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { RESOURCE_ICONS, CellType } from "~/utils/game-types"
+import { RESOURCE_ICONS, RESOURCE_YIELDS, CellType } from "~/utils/game-types"
 import { ICON_PATHS, ICON_COLORS } from "~/utils/icon-paths"
-import type { CellData, RaceData } from "~/utils/game-types"
+import type { CellData, RaceData, Position } from "~/utils/game-types"
 
 const props = defineProps<{
   cellSize: number | "fit"
@@ -71,11 +71,17 @@ const expandTargets = computed(() => {
   for (const race of props.races) {
     if (!race.alive) continue
 
-    const hasFabricBuild = race.controlledCells.some((p) => {
+    const hasAction = props.cells?.some((row) =>
+      row.some(
+        (c) =>
+          (c.captureProgress > 0 && c.capturedBy === race.id && c.ownerId === null) ||
+          (c.attackProgress > 0 && c.attackedBy === race.id)
+      )
+    ) || race.controlledCells.some((p) => {
       const c = props.cells?.[p.y]?.[p.x]
       return c?.fabricOwnerId === race.id && !c.fabricComplete
     })
-    if (hasFabricBuild) continue
+    if (hasAction) continue
 
     const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))
     const candidates: Array<{ x: number; y: number }> = []
@@ -116,6 +122,68 @@ const expandTargets = computed(() => {
     targets[race.id] = best
   }
 
+  return targets
+})
+
+const attackTargets = computed(() => {
+  const targets: Record<string, { x: number; y: number }> = {}
+  if (!props.cells) return targets
+  const width = props.cells[0]?.length ?? 0
+  const height = props.cells.length
+
+  for (const race of props.races) {
+    if (!race.alive) continue
+
+    const hasAction = props.cells?.some((row) =>
+      row.some(
+        (c) =>
+          (c.captureProgress > 0 && c.capturedBy === race.id && c.ownerId === null) ||
+          (c.attackProgress > 0 && c.attackedBy === race.id)
+      )
+    ) || race.controlledCells.some((p) => {
+      const c = props.cells?.[p.y]?.[p.x]
+      return c?.fabricOwnerId === race.id && !c.fabricComplete
+    })
+    if (hasAction) continue
+
+    const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))
+    const candidates: Position[] = []
+    for (const pos of race.controlledCells) {
+      for (const dir of DIRS) {
+        const nx = pos.x + dir.x
+        const ny = pos.y + dir.y
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+        const key = `${nx},${ny}`
+        if (ownedSet.has(key)) continue
+        const cell = props.cells[ny]?.[nx]
+        if (!cell || cell.ownerId === null || cell.ownerId === race.id) continue
+        if (cell.attackProgress > 0 && cell.attackedBy !== race.id) continue
+        if (!candidates.some((c) => c.x === nx && c.y === ny)) {
+          candidates.push({ x: nx, y: ny })
+        }
+      }
+    }
+    if (candidates.length === 0) continue
+
+    let best = candidates[0]!
+    let bestScore = -Infinity
+    for (const c of candidates) {
+      const cell = props.cells[c.y]![c.x]!
+      let score = 0
+      if (cell.type === CellType.BASE) score += 100
+      if (cell.fabricComplete) score += 50
+      if (cell.fabricOwnerId && !cell.fabricComplete) score += 10
+      if (cell.resourceType) {
+        const yields = RESOURCE_YIELDS[cell.resourceType]
+        score += yields.meal + yields.water + yields.material * 2
+      }
+      if (score > bestScore || (score === bestScore && (c.x * 7 + c.y * 13) % 2 === 0)) {
+        bestScore = score
+        best = c
+      }
+    }
+    targets[race.id] = best
+  }
   return targets
 })
 
@@ -190,6 +258,11 @@ function drawGrid() {
       targetSet.add(`${pos.x},${pos.y}`)
     }
 
+    const atkTargetSet = new Set<string>()
+    for (const pos of Object.values(attackTargets.value)) {
+      atkTargetSet.add(`${pos.x},${pos.y}`)
+    }
+
     for (let y = 0; y < props.cells.length && y < GRID_SIZE; y++) {
       const row = props.cells[y]
       if (!row) continue
@@ -221,6 +294,20 @@ function drawGrid() {
           }
         }
 
+        if (atkTargetSet.has(`${x},${y}`)) {
+          const raceId = Object.keys(attackTargets.value).find(
+            (id) => attackTargets.value[id]!.x === x && attackTargets.value[id]!.y === y
+          )
+          const color = raceId ? ownerColorMap.value[raceId]?.color : null
+          if (color) {
+            ctx.strokeStyle = color
+            ctx.lineWidth = 2
+            ctx.setLineDash([6, 4])
+            ctx.strokeRect(x * size + 1, y * size + 1, size - 2, size - 2)
+            ctx.setLineDash([])
+          }
+        }
+
         if (cell.captureProgress > 0 && cell.captureCost > 0) {
           const captureColor = cell.capturedBy ? ownerColorMap.value[cell.capturedBy]?.color ?? "#fff" : "#fff"
           ctx.fillStyle = captureColor
@@ -232,6 +319,21 @@ function drawGrid() {
           ctx.lineWidth = 1
           ctx.setLineDash([])
           ctx.strokeRect(x * size + 2, y * size + size - barH - 2, barW, barH)
+        }
+
+        if (cell.attackProgress > 0 && cell.attackedBy) {
+          const atkColor = ownerColorMap.value[cell.attackedBy]?.color ?? "#ff4444"
+          ctx.fillStyle = atkColor
+          const barW = Math.max(2, size - 4)
+          const barH = 3
+          const filled = (cell.attackProgress / 5) * barW
+          ctx.globalAlpha = 0.8
+          ctx.fillRect(x * size + 2, y * size + 2, filled, barH)
+          ctx.globalAlpha = 1
+          ctx.strokeStyle = atkColor
+          ctx.lineWidth = 1
+          ctx.setLineDash([])
+          ctx.strokeRect(x * size + 2, y * size + 2, barW, barH)
         }
 
         if (cell.fabricOwnerId && !cell.fabricComplete && cell.fabricCost > 0) {
@@ -297,6 +399,10 @@ const tooltipText = computed(() => {
   if (cell.type === CellType.BASE) lines.push("База")
   else if (cell.resourceType) lines.push(cell.resourceType)
   if (cell.captureProgress > 0 && cell.captureCost > 0) lines.push(`Захват: ${cell.captureProgress}/${cell.captureCost}`)
+  if (cell.attackProgress > 0 && cell.attackedBy) {
+    const attacker = props.races.find((r) => r.id === cell.attackedBy)
+    if (attacker) lines.push(`Атака: ${attacker.name} ${cell.attackProgress}/5`)
+  }
   if (cell.resourceAmount > 0) lines.push(`Ресурс: ${cell.resourceAmount}`)
   if (cell.fabricOwnerId) {
     if (cell.fabricComplete) lines.push("Фабрика: готова")
@@ -315,21 +421,24 @@ const tooltipText = computed(() => {
   return lines.join("\n")
 })
 
-watch([resolvedCellSize, containerWidth, containerHeight, () => props.cells, ownerColorMap, expandTargets], drawGrid, { flush: "post" })
+watch([resolvedCellSize, containerWidth, containerHeight, () => props.cells, ownerColorMap, expandTargets, attackTargets], drawGrid, { flush: "post" })
+
+let resizeObserver: ResizeObserver | null = null
 
 onMounted(() => {
   iconCache.clear()
   updateSize()
-  const observer = new ResizeObserver(() => {
+  resizeObserver = new ResizeObserver(() => {
     if (resizeTimer) clearTimeout(resizeTimer)
     resizeTimer = setTimeout(updateSize, 100)
   })
-  if (containerRef.value) observer.observe(containerRef.value)
-  onUnmounted(() => {
-    observer.disconnect()
-    if (resizeTimer) clearTimeout(resizeTimer)
-  })
+  if (containerRef.value) resizeObserver.observe(containerRef.value)
   nextTick(drawGrid)
+})
+
+onUnmounted(() => {
+  if (resizeObserver) resizeObserver.disconnect()
+  if (resizeTimer) clearTimeout(resizeTimer)
 })
 </script>
 

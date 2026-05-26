@@ -138,6 +138,61 @@ function tryStartFabric(race: RaceData, cells: CellData[][]) {
   }
 }
 
+function findAttackTarget(
+  race: RaceData,
+  cells: CellData[][]
+): Position | null {
+  const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))
+  const candidates: Position[] = []
+  const width = cells[0]?.length ?? 0
+  const height = cells.length
+
+  for (const pos of race.controlledCells) {
+    for (const dir of DIRS) {
+      const nx = pos.x + dir.x
+      const ny = pos.y + dir.y
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+      const key = `${nx},${ny}`
+      if (ownedSet.has(key)) continue
+      const cell = cells[ny]?.[nx]
+      if (!cell || cell.ownerId === null || cell.ownerId === race.id) continue
+      if (cell.attackProgress > 0 && cell.attackedBy !== race.id) continue
+      if (!candidates.some((c) => c.x === nx && c.y === ny)) {
+        candidates.push({ x: nx, y: ny })
+      }
+    }
+  }
+
+  if (candidates.length === 0) return null
+
+  let best = candidates[0]!
+  let bestScore = -Infinity
+  for (const c of candidates) {
+    const cell = cells[c.y]![c.x]!
+    let score = 0
+    if (cell.type === CellType.BASE) score += 100
+    if (cell.fabricComplete) score += 50
+    if (cell.fabricOwnerId && !cell.fabricComplete) score += 10
+    if (cell.resourceType) {
+      const yields = RESOURCE_YIELDS[cell.resourceType]
+      score += yields.meal + yields.water + yields.material * 2
+    }
+    if (score > bestScore || (score === bestScore && Math.random() < 0.5)) {
+      bestScore = score
+      best = c
+    }
+  }
+  return best
+}
+
+function tryStartAttack(race: RaceData, cells: CellData[][]) {
+  const target = findAttackTarget(race, cells)
+  if (!target) return
+  const cell = cells[target.y]![target.x]!
+  cell.attackProgress = 1
+  cell.attackedBy = race.id
+}
+
 export function processTurn(
   cells: CellData[][],
   races: RaceData[],
@@ -160,7 +215,6 @@ export function processTurn(
     const width = newCells[0]?.length ?? 0
     const height = newCells.length
 
-    const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))
     let capturePos: Position | null = null
     for (const pos of race.controlledCells) {
       for (const dir of DIRS) {
@@ -176,6 +230,21 @@ export function processTurn(
       if (capturePos) break
     }
 
+    let attackPos: Position | null = null
+    for (const pos of race.controlledCells) {
+      for (const dir of DIRS) {
+        const nx = pos.x + dir.x
+        const ny = pos.y + dir.y
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
+        const cell = newCells[ny]?.[nx]
+        if (cell && cell.attackProgress > 0 && cell.attackedBy === race.id) {
+          attackPos = { x: nx, y: ny }
+          break
+        }
+      }
+      if (attackPos) break
+    }
+
     let activeFabric: Position | null = null
     for (const pos of race.controlledCells) {
       const cell = newCells[pos.y]?.[pos.x]
@@ -185,7 +254,36 @@ export function processTurn(
       }
     }
 
-    if (capturePos) {
+    if (attackPos) {
+      const cell = newCells[attackPos.y]![attackPos.x]!
+      if (race.resources.material >= 1) {
+        race.resources.material -= 1
+        cell.attackProgress++
+        if (cell.attackProgress >= 5) {
+          const defenderId = cell.ownerId!
+          cell.ownerId = race.id
+          cell.attackProgress = 0
+          cell.attackedBy = null
+          cell.captureProgress = 0
+          cell.captureCost = 0
+          cell.capturedBy = null
+          race.controlledCells.push(attackPos)
+
+          const defender = newRaces.find((r) => r.id === defenderId)
+          if (defender) {
+            defender.controlledCells = defender.controlledCells.filter(
+              (p) => p.x !== attackPos.x || p.y !== attackPos.y
+            )
+            defender.baseCells = defender.baseCells.filter(
+              (p) => p.x !== attackPos.x || p.y !== attackPos.y
+            )
+            if (defender.baseCells.length === 0) {
+              defender.alive = false
+            }
+          }
+        }
+      }
+    } else if (capturePos) {
       const cell = newCells[capturePos.y]![capturePos.x]!
       cell.captureProgress++
       if (cell.captureProgress >= cell.captureCost) {
@@ -193,6 +291,8 @@ export function processTurn(
         cell.captureProgress = 0
         cell.captureCost = 0
         cell.capturedBy = null
+        cell.attackProgress = 0
+        cell.attackedBy = null
         race.controlledCells.push(capturePos)
       }
     } else if (activeFabric) {
@@ -205,20 +305,26 @@ export function processTurn(
         }
       }
     } else {
+      const warRoll = race.priorities.war > 0 && Math.random() * 100 < race.priorities.war && findAttackTarget(race, newCells) !== null
       const expansionRoll = race.priorities.expansion > 0 && Math.random() * 100 < race.priorities.expansion
       const buildThreshold = Math.max(5, 50 - race.priorities.building * 0.4)
       const canBuild = race.resources.material > buildThreshold
 
-      if (expansionRoll && canBuild) {
-        if (Math.random() < race.priorities.building / (race.priorities.expansion + race.priorities.building)) {
-          tryStartFabric(race, newCells)
-        } else {
-          tryStartCapture(race, newCells, width, height)
+      const weights: Array<{ action: () => void; weight: number }> = []
+      if (warRoll) weights.push({ action: () => tryStartAttack(race, newCells), weight: race.priorities.war })
+      if (expansionRoll) weights.push({ action: () => tryStartCapture(race, newCells, width, height), weight: race.priorities.expansion })
+      if (canBuild) weights.push({ action: () => tryStartFabric(race, newCells), weight: race.priorities.building })
+
+      if (weights.length > 0) {
+        const total = weights.reduce((s, w) => s + w.weight, 0)
+        let roll = Math.random() * total
+        for (const { action, weight } of weights) {
+          roll -= weight
+          if (roll <= 0) {
+            action()
+            break
+          }
         }
-      } else if (expansionRoll) {
-        tryStartCapture(race, newCells, width, height)
-      } else if (canBuild) {
-        tryStartFabric(race, newCells)
       }
     }
 
