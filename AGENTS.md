@@ -3,6 +3,7 @@
 ## Rules
 
 - **Never** run `npm` commands outside Docker container — use `make dev` / `make build` instead
+- **Never** run `npm run build` or `npx nuxi typecheck` unless explicitly asked — dev mode hot-reload handles changes
 - **Never** commit or create PRs without explicit user approval
 - **Never** force-push, amend commits, or rewrite git history
 

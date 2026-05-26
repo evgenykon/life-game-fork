@@ -1,78 +1,52 @@
 <script setup lang="ts">
-import { Button, Tag, Header } from "effus-ui"
-
 const {
   state,
   selectedAction,
-  validationError,
-  currentRace,
-  playerRace,
-  isGameOver,
   playerCanAct,
-  allAliveActed,
+  playerRace,
   init,
-  selectAction,
   clickCell,
-  skipTurn,
-  advanceToNextAliveRace,
-  advanceCycle,
 } = useGameState()
 
-const mapWidth = ref(20)
-const mapHeight = ref(20)
-const raceCount = ref(3)
-
 onMounted(() => {
-  startGame()
+  init(20, 20, 3)
 })
-
-function startGame() {
-  init(mapWidth.value, mapHeight.value, raceCount.value)
-}
 
 function handleCellClick(pos: Position) {
   clickCell(pos)
 }
-
-const actionTypes = [
-  { type: "occupy" as const, label: "Occupy", icon: "i-mdi-arrow-expand" },
-  { type: "build_factory" as const, label: "Factory", icon: "i-mdi-factory" },
-  { type: "build_base" as const, label: "Base", icon: "i-mdi-home" },
-  { type: "attack" as const, label: "Attack", icon: "i-mdi-sword" },
-]
-
-const presets = [
-  { w: 15, h: 15, races: 2, label: "Quick" },
-  { w: 20, h: 20, races: 3, label: "Standard" },
-  { w: 30, h: 30, races: 5, label: "Large" },
-  { w: 15, h: 15, races: 4, label: "Crowded" },
-]
-
-function applyPreset(p: { w: number; h: number; races: number }) {
-  mapWidth.value = p.w
-  mapHeight.value = p.h
-  raceCount.value = p.races
-}
 </script>
 
 <template>
-  <div class="h-[calc(100vh-8rem)] pt-4">
-    <div v-if="state" class="h-full">
-      <GameBoard
-        :map="state.map"
-        :selected-action="selectedAction"
-        :is-waiting-action="playerCanAct"
-        @cell-click="handleCellClick"
-      />
-    </div>
-    <div v-else class="flex h-full items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
-      Generating map...
-    </div>
-  </div>
-    <div v-else class="flex flex-1 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
-      Generating map...
+  <div class="flex h-[calc(100vh-2rem)] flex-col gap-3">
+    <div class="mt-2 flex items-stretch overflow-hidden rounded-lg border border-border bg-card p-2 shadow-sm">
+      <div class="flex items-stretch divide-x divide-border">
+        <div class="flex flex-col px-3 py-2">
+          <span class="text-xs font-bold tabular-nums leading-none text-foreground">{{ state?.cycle ?? "—" }}</span>
+          <span class="mt-0.5 text-[10px] leading-none text-muted-foreground">текущий цикл</span>
+        </div>
+        <div class="flex flex-col px-3 py-2">
+          <span class="text-xs font-bold tabular-nums leading-none text-foreground">{{ state ? state.races.filter(r => r.alive).length : "—" }}<span class="text-muted-foreground/40">/{{ state?.races.length ?? "—" }}</span></span>
+          <span class="mt-0.5 text-[10px] leading-none text-muted-foreground">рас в игре</span>
+        </div>
+      </div>
     </div>
 
+    <div class="flex flex-1 gap-4">
+      <div v-if="state" class="flex-1">
+        <GameBoard
+          :map="state.map"
+          :selected-action="selectedAction"
+          :is-waiting-action="playerCanAct"
+          @cell-click="handleCellClick"
+        />
+      </div>
+      <div v-else class="flex flex-1 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
+        Generating map...
+      </div>
 
+      <aside class="flex w-64 shrink-0 flex-col overflow-y-auto rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm">
+      </aside>
+    </div>
   </div>
 </template>
