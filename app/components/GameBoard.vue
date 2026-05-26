@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { RESOURCE_ICONS, CellType } from "~/utils/game-types"
 import { ICON_COLORS } from "~/utils/icon-paths"
-import type { CellData } from "~/utils/game-types"
+import type { CellData, RaceData } from "~/utils/game-types"
 
 const props = defineProps<{
   cellSize: number | "fit"
   cells: CellData[][] | null
+  races: RaceData[]
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -42,6 +43,14 @@ const resolvedCellSize = computed(() => {
   return props.cellSize
 })
 
+const ownerColorMap = computed(() => {
+  const map: Record<string, { color: string; tintColor: string; borderColor: string }> = {}
+  for (const race of props.races) {
+    map[race.id] = { color: race.color, tintColor: race.tintColor, borderColor: race.borderColor }
+  }
+  return map
+})
+
 async function renderIcon(iconName: string, size: number, color: string): Promise<HTMLCanvasElement> {
   const cacheKey = `v3-${iconName}-${size}-${color}`
   if (iconCache.has(cacheKey)) return iconCache.get(cacheKey)!
@@ -54,7 +63,9 @@ async function renderIcon(iconName: string, size: number, color: string): Promis
   let name: string
   
   if (raw.includes(':')) {
-    [collection, name] = raw.split(':')
+    const parts = raw.split(':')
+    collection = parts[0] ?? ""
+    name = parts[1] ?? ""
   } else {
     const parts = raw.split('-')
     collection = parts[0]!
@@ -131,6 +142,16 @@ function drawGrid() {
         const cell = row[x]
         if (!cell) continue
 
+        const ownerColor = cell.ownerId ? ownerColorMap.value[cell.ownerId] : null
+        if (ownerColor) {
+          ctx.fillStyle = ownerColor.tintColor
+          ctx.fillRect(x * size, y * size, size, size)
+          ctx.strokeStyle = ownerColor.borderColor
+          ctx.lineWidth = 1
+          ctx.setLineDash([])
+          ctx.strokeRect(x * size + 0.5, y * size + 0.5, size - 1, size - 1)
+        }
+
         const icon = cell.type === CellType.BASE
           ? "i-mdi-home"
           : cell.resourceType
@@ -138,7 +159,9 @@ function drawGrid() {
             : null
 
         if (icon && size >= 8) {
-          const color = ICON_COLORS[icon] ?? "rgba(255,255,255,0.7)"
+          const color = cell.type === CellType.BASE && ownerColor
+            ? ownerColor.color
+            : ICON_COLORS[icon] ?? "rgba(255,255,255,0.7)"
           renderIcon(icon, size, color).then((iconCanvas) => {
             if (props.cells?.[y]?.[x]) {
               ctx.drawImage(iconCanvas, x * size, y * size, size, size)
@@ -185,7 +208,7 @@ const tooltipText = computed(() => {
   return lines.join("\n")
 })
 
-watch([resolvedCellSize, containerWidth, containerHeight, () => props.cells], drawGrid, { flush: "post" })
+watch([resolvedCellSize, containerWidth, containerHeight, () => props.cells, ownerColorMap], drawGrid, { flush: "post" })
 
 onMounted(() => {
   iconCache.clear()

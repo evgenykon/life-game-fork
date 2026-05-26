@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { Button, Tag } from "effus-ui"
+import { Tag } from "effus-ui"
+import { ResourceType, RESOURCE_ICONS } from "~/utils/game-types"
+import { ICON_COLORS } from "~/utils/icon-paths"
+
+const props = defineProps<{
+  cycle: number
+  aliveCount: number
+  totalRaces: number
+  resourceTotals: Record<string, number>
+  resourceTypeOrder: ResourceType[]
+}>()
 
 const { cellSize, zoomIn, zoomOut } = useZoom()
 
@@ -10,26 +20,42 @@ const zoomLabel = computed(() => (cellSize.value === "fit" ? "fit" : `${cellSize
 </script>
 
 <template>
-  <div class="flex items-center justify-between">
+  <div class="flex items-center justify-between gap-4">
     <div class="flex items-center gap-4">
       <div class="flex items-center gap-2">
-        <span class="text-sm font-semibold">—</span>
+        <span class="text-sm font-semibold">{{ cycle }}</span>
         <Tag variant="primary">цикл</Tag>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-sm font-semibold">—</span>
+        <span class="text-sm font-semibold">{{ aliveCount }}/{{ totalRaces }}</span>
         <Tag variant="primary">расы</Tag>
       </div>
     </div>
 
-    <div class="flex items-center gap-1">
-      <Button variant="outline" size="sm" :disabled="isMinZoom" @click="zoomOut">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div
+        v-for="rt in resourceTypeOrder"
+        :key="rt"
+        v-show="resourceTotals[rt] !== undefined"
+        class="flex items-center gap-1 text-xs"
+      >
+        <Icon
+          :name="RESOURCE_ICONS[rt]"
+          :color="ICON_COLORS[RESOURCE_ICONS[rt]] ?? '#fff'"
+          class="h-4 w-4"
+        />
+        <span class="tabular-nums">{{ resourceTotals[rt] ?? 0 }}</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1 shrink-0">
+      <button variant="outline" size="sm" :disabled="isMinZoom" class="btn btn-outline btn-sm" @click="zoomOut">
         <Icon name="i-mdi-minus" />
-      </Button>
+      </button>
       <span class="px-2 text-xs tabular-nums text-muted-foreground">{{ zoomLabel }}</span>
-      <Button variant="outline" size="sm" :disabled="isMaxZoom" @click="zoomIn">
+      <button variant="outline" size="sm" :disabled="isMaxZoom" class="btn btn-outline btn-sm" @click="zoomIn">
         <Icon name="i-mdi-plus" />
-      </Button>
+      </button>
     </div>
   </div>
 </template>

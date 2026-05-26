@@ -43,7 +43,7 @@ export const RESOURCE_ICONS: Record<ResourceType, string> = {
 
 export const RESOURCE_AMOUNT = 100
 export const RACE_START_RESOURCES = { meal: 100, water: 100, material: 100 }
-export const MIN_RACE_DISTANCE = 5
+export const MIN_RACE_DISTANCE = 4
 
 export interface Position {
   x: number
@@ -66,9 +66,23 @@ export interface CellData {
   isDepleted: boolean
 }
 
+export const RACE_COLORS: Array<{ color: string; tintColor: string; borderColor: string }> = [
+  { color: "#ef4444", tintColor: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.4)" },
+  { color: "#3b82f6", tintColor: "rgba(59,130,246,0.12)", borderColor: "rgba(59,130,246,0.4)" },
+  { color: "#22c55e", tintColor: "rgba(34,197,94,0.12)", borderColor: "rgba(34,197,94,0.4)" },
+  { color: "#a855f7", tintColor: "rgba(168,85,247,0.12)", borderColor: "rgba(168,85,247,0.4)" },
+  { color: "#f97316", tintColor: "rgba(249,115,22,0.12)", borderColor: "rgba(249,115,22,0.4)" },
+  { color: "#ec4899", tintColor: "rgba(236,72,153,0.12)", borderColor: "rgba(236,72,153,0.4)" },
+  { color: "#14b8a6", tintColor: "rgba(20,184,166,0.12)", borderColor: "rgba(20,184,166,0.4)" },
+  { color: "#eab308", tintColor: "rgba(234,179,8,0.12)", borderColor: "rgba(234,179,8,0.4)" },
+]
+
 export interface RaceData {
   id: string
   name: string
+  color: string
+  tintColor: string
+  borderColor: string
   resources: { meal: number; water: number; material: number }
   baseCells: Position[]
   controlledCells: Position[]

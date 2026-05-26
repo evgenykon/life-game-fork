@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ResourceType, RESOURCE_ICONS } from "~/utils/game-types"
+import type { CellData } from "~/utils/game-types"
+
 const { mapHash, mapWidth, mapHeight, cells, races, meta, isRunning, startGame, loadFromHash } = useGameState()
 const { cellSize } = useZoom()
 
@@ -42,6 +45,25 @@ const emptyCellSize = computed(() => {
 const gridWidthPx = computed(() => settingsWidth.value * emptyCellSize.value)
 const gridHeightPx = computed(() => settingsHeight.value * emptyCellSize.value)
 
+const cycle = computed(() => meta.value?.cycle ?? 0)
+const aliveCount = computed(() => races.value.filter((r) => r.alive).length)
+const totalRaces = computed(() => races.value.length)
+
+const resourceTotals = computed(() => {
+  const totals: Record<string, number> = {}
+  if (!cells.value) return totals
+  for (const row of cells.value) {
+    for (const cell of row) {
+      if (cell.resourceType && cell.resourceAmount > 0) {
+        totals[cell.resourceType] = (totals[cell.resourceType] ?? 0) + cell.resourceAmount
+      }
+    }
+  }
+  return totals
+})
+
+const resourceTypeOrder = Object.values(ResourceType)
+
 function handleSettingsChange(settings: { width: number; height: number }) {
   settingsWidth.value = settings.width
   settingsHeight.value = settings.height
@@ -59,7 +81,13 @@ function handleGameRestart() {
 <template>
   <div class="flex h-screen flex-col">
     <header class="shrink-0 p-3">
-      <TopBar />
+      <TopBar
+        :cycle="cycle"
+        :alive-count="aliveCount"
+        :total-races="totalRaces"
+        :resource-totals="resourceTotals"
+        :resource-type-order="resourceTypeOrder"
+      />
     </header>
 
     <div class="flex flex-1 overflow-hidden">
@@ -68,6 +96,7 @@ function handleGameRestart() {
           v-if="cells"
           :cell-size="cellSize"
           :cells="cells"
+          :races="races"
         />
         <div
           v-else

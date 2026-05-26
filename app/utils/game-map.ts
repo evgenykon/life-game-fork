@@ -1,4 +1,4 @@
-import { CellType, ResourceType, RESOURCE_WEIGHTS, RESOURCE_AMOUNT, MIN_RACE_DISTANCE, RACE_START_RESOURCES } from "~/utils/game-types"
+import { CellType, ResourceType, RESOURCE_WEIGHTS, RESOURCE_AMOUNT, MIN_RACE_DISTANCE, RACE_START_RESOURCES, RACE_COLORS } from "~/utils/game-types"
 import type { CellData, Position, RaceData, MapMeta } from "~/utils/game-types"
 
 function weightedRandomResource(): ResourceType {
@@ -97,10 +97,14 @@ export function generateMap(width: number, height: number, density: number, race
     cell.resourceAmount = 0
     cell.ownerId = `race_${i}`
 
+    const raceColor = RACE_COLORS[i % RACE_COLORS.length]!
     bases.push(pos)
     races.push({
       id: `race_${i}`,
       name: `Race ${i + 1}`,
+      color: raceColor.color,
+      tintColor: raceColor.tintColor,
+      borderColor: raceColor.borderColor,
       resources: { ...RACE_START_RESOURCES },
       baseCells: [pos],
       controlledCells: [pos],
@@ -113,7 +117,7 @@ export function generateMap(width: number, height: number, density: number, race
     height,
     density,
     raceCount,
-    cycle: 1,
+    cycle: 0,
     races,
   }
 
