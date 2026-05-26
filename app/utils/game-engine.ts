@@ -61,7 +61,9 @@ export function processTurn(
 
     for (const pos of race.controlledCells) {
       const cell = newCells[pos.y]?.[pos.x]
-      if (!cell || cell.type !== CellType.RESOURCE || cell.isDepleted || !cell.resourceType) continue
+      if (!cell || cell.isDepleted) continue
+      if (cell.fabricOwnerId !== race.id || !cell.fabricComplete) continue
+      if (!cell.resourceType) continue
 
       const yield_ = RESOURCE_YIELDS[cell.resourceType]
       race.resources.meal += yield_.meal
