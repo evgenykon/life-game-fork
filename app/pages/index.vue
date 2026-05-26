@@ -74,14 +74,25 @@ function handleGameRestart() {
 
 <template>
   <div class="flex h-screen flex-col">
-    <header class="shrink-0 p-3">
+    <header class="flex shrink-0 items-center gap-2 p-3">
       <TopBar
         :cycle="cycle"
         :alive-count="aliveCount"
         :total-races="totalRaces"
         :resource-totals="resourceTotals"
         :resource-type-order="resourceTypeOrder"
+        class="flex-1"
       />
+      <template v-if="cells">
+        <button class="btn btn-primary btn-sm text-xs inline-flex items-center gap-1" @click="togglePause">
+          <Icon :name="isPaused ? 'i-mdi-play' : 'i-mdi-pause'" class="h-3.5 w-3.5 shrink-0" />
+          {{ isPaused ? "Продолжить" : "Пауза" }}
+        </button>
+        <button class="btn btn-outline btn-sm text-xs inline-flex items-center gap-1" @click="handleGameRestart">
+          <Icon name="i-mdi-restart" class="h-3.5 w-3.5 shrink-0" />
+          Рестарт
+        </button>
+      </template>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
@@ -133,7 +144,7 @@ function handleGameRestart() {
         </div>
       </main>
 
-      <aside class="shrink-0 border-l border-border bg-card p-3">
+      <aside v-if="!cells" class="shrink-0 border-l border-border bg-card p-3">
         <RightPanel
           :map-width="settingsWidth"
           :map-height="settingsHeight"

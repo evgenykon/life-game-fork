@@ -43,17 +43,27 @@ function findExpandTarget(
 
   if (candidates.length === 0) return null
 
+  const deficits = calcDeficits(race)
   const bases = race.baseCells
   let best = candidates[0]!
   let bestDist = -1
   for (const c of candidates) {
+    const cell = cells[c.y]![c.x]!
     let minDist = Infinity
     for (const b of bases) {
       const d = manhattan(b, c)
       if (d < minDist) minDist = d
     }
-    if (minDist > bestDist || (minDist === bestDist && Math.random() < 0.5)) {
-      bestDist = minDist
+
+    let resourceBonus = 0
+    if (cell.resourceType) {
+      const yields = RESOURCE_YIELDS[cell.resourceType]
+      resourceBonus = yields.meal * deficits.meal + yields.water * deficits.water + yields.material * deficits.material
+    }
+    const effectiveDist = minDist + resourceBonus * 0.5
+
+    if (effectiveDist > bestDist || (effectiveDist === bestDist && Math.random() < 0.5)) {
+      bestDist = effectiveDist
       best = c
     }
   }
@@ -95,6 +105,19 @@ function findCellToStrip(
   return sorted[0] ?? null
 }
 
+function calcDeficits(race: RaceData): { meal: number; water: number; material: number } {
+  const cyclesLeft = {
+    meal: race.resources.meal / Math.max(1, RACE_MAINTENANCE.meal),
+    water: race.resources.water / Math.max(1, RACE_MAINTENANCE.water),
+    material: race.resources.material / Math.max(1, RACE_MAINTENANCE.material),
+  }
+  return {
+    meal: Math.max(0, 10 - cyclesLeft.meal),
+    water: Math.max(0, 10 - cyclesLeft.water),
+    material: Math.max(0, 10 - cyclesLeft.material),
+  }
+}
+
 function tryStartCapture(
   race: RaceData,
   cells: CellData[][],
@@ -113,6 +136,7 @@ function tryStartCapture(
 }
 
 function tryStartFabric(race: RaceData, cells: CellData[][]) {
+  const deficits = calcDeficits(race)
   let bestCell: { pos: Position; cell: CellData; score: number } | null = null
   for (const pos of race.controlledCells) {
     const cell = cells[pos.y]?.[pos.x]
@@ -120,9 +144,10 @@ function tryStartFabric(race: RaceData, cells: CellData[][]) {
     const cost = RESOURCE_FABRIC_COST[cell.resourceType]
     if (cost === null || cost <= 0) continue
 
-    const score = RESOURCE_YIELDS[cell.resourceType]
+    const yield_ = RESOURCE_YIELDS[cell.resourceType]
+    const deficitScore = yield_.meal * deficits.meal + yield_.water * deficits.water + yield_.material * deficits.material
     const isDepleted = cell.isDepleted ? 100 : 0
-    const totalScore = score.meal + score.water + score.material * 0.5 + (isDepleted * race.priorities.reinforcement) / 100
+    const totalScore = deficitScore + (isDepleted * race.priorities.reinforcement) / 100
 
     if (!bestCell || totalScore > bestCell.score) {
       bestCell = { pos, cell, score: totalScore }
@@ -165,6 +190,7 @@ function findAttackTarget(
 
   if (candidates.length === 0) return null
 
+  const deficits = calcDeficits(race)
   let best = candidates[0]!
   let bestScore = -Infinity
   for (const c of candidates) {
@@ -175,7 +201,7 @@ function findAttackTarget(
     if (cell.fabricOwnerId && !cell.fabricComplete) score += 10
     if (cell.resourceType) {
       const yields = RESOURCE_YIELDS[cell.resourceType]
-      score += yields.meal + yields.water + yields.material * 2
+      score += yields.meal * (1 + deficits.meal) + yields.water * (1 + deficits.water) + yields.material * (2 + deficits.material)
     }
     if (score > bestScore || (score === bestScore && Math.random() < 0.5)) {
       bestScore = score
@@ -307,8 +333,10 @@ export function processTurn(
     } else {
       const warRoll = race.priorities.war > 0 && Math.random() * 100 < race.priorities.war && findAttackTarget(race, newCells) !== null
       const expansionRoll = race.priorities.expansion > 0 && Math.random() * 100 < race.priorities.expansion
-      const buildThreshold = Math.max(5, 50 - race.priorities.building * 0.4)
-      const canBuild = race.resources.material > buildThreshold
+      const deficits = calcDeficits(race)
+      const critical = deficits.meal > 5 || deficits.water > 5 || deficits.material > 5
+      const buildThreshold = critical ? 0 : Math.max(1, 10 - race.priorities.building * 0.1)
+      const canBuild = race.resources.material >= buildThreshold
 
       const weights: Array<{ action: () => void; weight: number }> = []
       if (warRoll) weights.push({ action: () => tryStartAttack(race, newCells), weight: race.priorities.war })

@@ -56,5 +56,7 @@ const zoomLabel = computed(() => (cellSize.value === "fit" ? "fit" : `${cellSize
         <Icon name="i-mdi-plus" />
       </button>
     </div>
+
+    <div class="h-5 w-px bg-white/20" />
   </div>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RESOURCE_ICONS, RESOURCE_YIELDS, CellType } from "~/utils/game-types"
+import { RESOURCE_ICONS, RESOURCE_YIELDS, RESOURCE_CAPTURE_COST, RESOURCE_FABRIC_COST, CellType } from "~/utils/game-types"
 import { ICON_PATHS, ICON_COLORS } from "~/utils/icon-paths"
 import type { CellData, RaceData, Position } from "~/utils/game-types"
 
@@ -404,6 +404,12 @@ const tooltipText = computed(() => {
     if (attacker) lines.push(`Атака: ${attacker.name} ${cell.attackProgress}/5`)
   }
   if (cell.resourceAmount > 0) lines.push(`Ресурс: ${cell.resourceAmount}`)
+  if (!cell.ownerId && cell.resourceType) {
+    const capCost = RESOURCE_CAPTURE_COST[cell.resourceType]
+    if (capCost > 0) lines.push(`Захват: ${capCost} циклов`)
+    const fabCost = RESOURCE_FABRIC_COST[cell.resourceType]
+    if (fabCost !== null && fabCost > 0) lines.push(`Фабрика: ${fabCost} циклов`)
+  }
   if (cell.fabricOwnerId) {
     if (cell.fabricComplete) lines.push("Фабрика: готова")
     else lines.push(`Фабрика: ${cell.fabricProgress}/${cell.fabricCost}`)
