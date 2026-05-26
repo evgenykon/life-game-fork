@@ -2,40 +2,61 @@
 
 ## Description
 
-Each cell can send and response messages to communicate with other world (based on Vue.js emits). 
+Each cell can send and response messages to communicate with other world (based on Vue.js events). 
 There are one coordinator (main game engine) that use interval timer to run event-triggered logic.
 
-Each cell can be:
-- race base
-- researched resource cell
-- resource cell with race-owned fabric
-- shadowed cell (that will be a random resource after researching process ends)
+## Виды игровых клеток (cells)
 
-There are 8 types of resources:
-- FIELD
-- FOREST
-- GRUNT
-- ROCK
-- SWAMP
-- SAND
-- SNOW
-- WATER
+Каждая клетка может быть:
+- base (база расы)
+  - хранит ресурсы: meal (еда), water (вода), material (материал)
+  - после разрушения или захвата передает ресурсы атакующей расе
+  - может быть построена 1 на 10 клеток, но не исчезает если раса теряет клетки
+  - строимость 20 циклов, 20 материалов, 20 воды, 20 еды
+  - разрушается 10 циклов
+  - захватывается 10 циклов
+  - тратит 5 еды и 5 воды каждый цикл 
+- resource (клетка ресурсов)
+  - может быть один из ресурсов перечисленных в списке ресурсов
+  - содержит 1 ресурс в объеме 100 единиц
+  - после переработки получает тип из колонки "Тип после истощения" и восстанавливается указанное число циклов
+  - после восстановления указанное в колонке "Восстановление" число циклов возвращает прежний тип
+  - если на клетке не строит фабрику никакая раса, через 50 циклов она меняет тип на соответствующий графе "Тип заброски".
+  - раса может построить фабрику на этой клетке, если она не занята другой расой (не стоит или не строится их фабрика или база)
+- fabric (клетка ресурсов с фабрикой какой-либо расы)
+  - можно построить на всех клетках кроме GRUNT, SAND
+  - снабжает расу ресурсами из этой клетки (1 единица за 1 цикл)
+  - строится из ресурса material (материал) за определенную стоимость 
+  - стоимость -1 материал каждый цикл, считается построенной после полной выплаты стоимости
+  - фабрика исчезает после истощения ресурса, если ресурс восстановился - требуется новая фабрика
+  - может быть занята другой расой за количество циклов = стоимости фабрики
+  - может быть разрушена другой расой за количество циклов = стоимости фабрики
+  - после уничтожения фабрики (или истощения ресурса) раса получает 5 материалов 
+- shadowed cell
+  - скрытая клетка (невидимая для расы), дальше 2 клеток от занятых расой
 
-Each of one give some bonuses for race each tick:
-- meal: +0.1
-- water: +0.2
-- etc
+## Список ресурсов
 
-Also, race gets a skill bonuses:
-- hardworking: +0.1 (how fast will be build a fabric)
-- research: +0.2 (how fast will be researched a cell)
-- diplomacy: +0.1 (how fast will be connected a cell)
-- agressive: +0.1 (how fast a cell will be destroyed)
+| Resource | Ru         | Восстановление | Тип после истощения | Тип заброски | Значение для расы | Стоимость фабрики |
+|----------|------------|----------------|---------------------|--------------|-------------------|-------------------|
+| FIELD    | поле зерна | 5              | GRUNT               | FOREST       | meal              | 5                 |
+| FOREST   | лес        | 10             | GRUNT               | FOREST       | material          | 5                 |
+| GRUNT    | почва      | 10             | SAND                | FOREST       | -                 | -                 |
+| ROCK     | камень     | 30             | SAND                | ROCK         | material          | 10                |
+| MINERAL  | минералы   | 30             | ROCK                | MINERAL      | material          | 10                |
+| SWAMP    | болото     | 5              | GRUNT               | SWAMP        | meal, material    | 10                |
+| SAND     | песок      | 0              | SAND                | GRUNT        | -                 | -                 |
+| SNOW     | снег       | 5              | GRUNT               | SNOW         | water             | 10                |
+| WATER    | вода       | 5              | SWAMP               | WATER        | water             | 5                 |
 
+## Ход игры
 
----
-
-You can set race count and map size in 'Config' section.
-
-And you can see game log with some comments what happened here.
-
+- Каждая раса стартует с 1 клетки базы.
+- У каждой расы есть стартовый набор ресурсов: 100 meal, 100 water, 100 material
+- Она должна решить что делать в этот ход
+  - занять свободную соседнюю клетку ресурсов 
+    - после выбора клетки раса становится владельцем клетки
+  - строить фабрику или базу на одной из занятых клеток (+1 к строительству, -1 от стоимости)
+  - начать атаковать занятую клетку
+  - пропустить ход
+- Раса исчезает (проигрывает) если истощен 1 из ресурсов: еда, вода либо захвачены все базы
