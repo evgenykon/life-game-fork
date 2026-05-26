@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Tag } from "effus-ui"
 import { ResourceType, RESOURCE_ICONS } from "~/utils/game-types"
 import { ICON_COLORS } from "~/utils/icon-paths"
 
@@ -22,14 +21,14 @@ const zoomLabel = computed(() => (cellSize.value === "fit" ? "fit" : `${cellSize
 <template>
   <div class="flex items-center justify-between gap-4">
     <div class="flex items-center gap-4">
-      <div class="flex items-center gap-2">
-        <span class="text-sm font-semibold">{{ cycle }}</span>
-        <Tag variant="primary">цикл</Tag>
+      <div class="flex items-center gap-1.5">
+        <span class="text-sm tabular-nums font-semibold">{{ cycle }}</span>
+        <span class="text-xs text-muted-foreground">цикл</span>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="text-sm font-semibold">{{ aliveCount }}/{{ totalRaces }}</span>
-        <Tag variant="primary">расы</Tag>
-      </div>
+    <div class="flex items-center gap-1.5">
+      <span class="text-sm tabular-nums font-semibold">{{ aliveCount }}/{{ totalRaces }}</span>
+      <span class="text-xs text-muted-foreground">расы</span>
+    </div>
     </div>
 
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1">

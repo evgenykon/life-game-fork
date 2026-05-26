@@ -7,12 +7,14 @@ const props = defineProps<{
   raceCount: number
   resourceDensity: number
   isRunning: boolean
+  isPaused: boolean
 }>()
 
 const emit = defineEmits<{
   settingsChange: [{ width: number; height: number }]
   gameStart: []
   gameRestart: []
+  togglePause: []
 }>()
 
 const mapWidth = ref(props.mapWidth)
@@ -23,10 +25,6 @@ const resourceDensity = ref(props.resourceDensity)
 const emitSettings = useDebounceFn(() => {
   emit("settingsChange", { width: mapWidth.value, height: mapHeight.value })
 }, 300)
-
-function handleStart() {
-  emit("gameStart")
-}
 
 function handleRestart() {
   emit("gameRestart")
@@ -61,9 +59,13 @@ function handleRestart() {
 
     <Card>
       <CardContent class="flex flex-col gap-2 pt-4">
-        <Button variant="default" class="flex items-center" @click="handleStart">
-          <Icon :name="isRunning ? 'i-mdi-pause' : 'i-mdi-play'" class="mr-1" />
-          {{ isRunning ? "Пауза" : "Старт" }}
+        <Button
+          variant="default"
+          class="flex items-center"
+          @click="isRunning ? emit('togglePause') : emit('gameStart')"
+        >
+          <Icon :name="isRunning && !isPaused ? 'i-mdi-pause' : 'i-mdi-play'" class="mr-1" />
+          {{ !isRunning ? "Старт" : isPaused ? "Продолжить" : "Пауза" }}
         </Button>
         <Button variant="outline" class="flex items-center" :disabled="!isRunning" @click="handleRestart">
           <Icon name="i-mdi-restart" class="mr-1" />

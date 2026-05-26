@@ -44,6 +44,20 @@ export const RESOURCE_ICONS: Record<ResourceType, string> = {
 export const RESOURCE_AMOUNT = 100
 export const RACE_START_RESOURCES = { meal: 100, water: 100, material: 100 }
 export const MIN_RACE_DISTANCE = 4
+export const RACE_MAINTENANCE = { meal: 3, water: 2, material: 1 }
+export const DEPLETION_RECOVERY_CYCLES = 10
+
+export const RESOURCE_YIELDS: Record<ResourceType, { meal: number; water: number; material: number }> = {
+  [ResourceType.FIELD]: { meal: 2, water: 0, material: 0 },
+  [ResourceType.FOREST]: { meal: 1, water: 0, material: 1 },
+  [ResourceType.GRUNT]: { meal: 0, water: 0, material: 0 },
+  [ResourceType.ROCK]: { meal: 0, water: 0, material: 2 },
+  [ResourceType.MINERAL]: { meal: 0, water: 0, material: 3 },
+  [ResourceType.SWAMP]: { meal: 0, water: 0, material: 0 },
+  [ResourceType.SAND]: { meal: 0, water: 0, material: 0 },
+  [ResourceType.SNOW]: { meal: 0, water: 1, material: 0 },
+  [ResourceType.WATER]: { meal: 0, water: 2, material: 0 },
+}
 
 export interface Position {
   x: number

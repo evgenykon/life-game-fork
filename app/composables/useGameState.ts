@@ -1,5 +1,6 @@
 import type { CellData, RaceData, MapMeta } from "~/utils/game-types"
 import { generateMap } from "~/utils/game-map"
+import { processTurn } from "~/utils/game-engine"
 import { generateHash, clearOldStorage, saveMapToStorage, loadMapFromStorage } from "~/utils/hash"
 
 export const useGameState = () => {
@@ -10,6 +11,23 @@ export const useGameState = () => {
   const races = ref<RaceData[]>([])
   const meta = ref<MapMeta | null>(null)
   const isRunning = ref(false)
+  const isPaused = ref(false)
+
+  let timer: ReturnType<typeof setInterval> | null = null
+
+  function startTimer() {
+    stopTimer()
+    timer = setInterval(() => {
+      nextTurn()
+    }, 1000)
+  }
+
+  function stopTimer() {
+    if (timer !== null) {
+      clearInterval(timer)
+      timer = null
+    }
+  }
 
   function startGame(width: number, height: number, raceCount: number, density: number) {
     const oldHash = mapHash.value
@@ -27,8 +45,11 @@ export const useGameState = () => {
     races.value = newRaces
     meta.value = newMeta
     isRunning.value = true
+    isPaused.value = false
 
     window.history.replaceState(null, "", `#${hash}`)
+
+    startTimer()
   }
 
   function loadFromHash(hash: string, width: number, height: number) {
@@ -41,10 +62,39 @@ export const useGameState = () => {
       races.value = loaded.meta.races
       meta.value = loaded.meta
       isRunning.value = true
+      isPaused.value = false
+      startTimer()
     } else {
       startGame(width, height, 3, 40)
     }
   }
 
-  return { mapHash, mapWidth, mapHeight, cells, races, meta, isRunning, startGame, loadFromHash }
+  function nextTurn() {
+    if (!cells.value || !meta.value || !isRunning.value) return
+    const result = processTurn(cells.value, races.value, meta.value)
+    cells.value = result.cells
+    races.value = result.races
+    meta.value = result.meta
+    if (mapHash.value) {
+      saveMapToStorage(mapHash.value, mapWidth.value, mapHeight.value, (x, y) => result.cells[y]![x]!, result.meta)
+    }
+  }
+
+  function togglePause() {
+    if (!isRunning.value) return
+    isPaused.value = !isPaused.value
+    if (isPaused.value) {
+      stopTimer()
+    } else {
+      startTimer()
+    }
+  }
+
+  function stopGame() {
+    stopTimer()
+    isRunning.value = false
+    isPaused.value = false
+  }
+
+  return { mapHash, mapWidth, mapHeight, cells, races, meta, isRunning, isPaused, startGame, loadFromHash, nextTurn, togglePause, stopGame }
 }

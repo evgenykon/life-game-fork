@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ResourceType, RESOURCE_ICONS } from "~/utils/game-types"
-import type { CellData } from "~/utils/game-types"
+import { ResourceType } from "~/utils/game-types"
 
-const { mapHash, mapWidth, mapHeight, cells, races, meta, isRunning, startGame, loadFromHash } = useGameState()
+const { mapHash, mapWidth, mapHeight, cells, races, meta, isRunning, isPaused, startGame, loadFromHash, togglePause } = useGameState()
 const { cellSize } = useZoom()
 
 const settingsWidth = ref(20)
@@ -132,9 +131,11 @@ function handleGameRestart() {
           :race-count="settingsRaceCount"
           :resource-density="settingsDensity"
           :is-running="isRunning"
+          :is-paused="isPaused"
           @settings-change="handleSettingsChange"
           @game-start="handleGameStart"
           @game-restart="handleGameRestart"
+          @toggle-pause="togglePause"
         />
       </aside>
     </div>

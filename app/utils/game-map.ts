@@ -65,8 +65,8 @@ export function generateMap(width: number, height: number, density: number, race
     let attempts = 0
     while (attempts < 500) {
       const candidate: Position = {
-        x: Math.floor(Math.random() * width),
-        y: Math.floor(Math.random() * height),
+        x: 1 + Math.floor(Math.random() * (width - 2)),
+        y: 1 + Math.floor(Math.random() * (height - 2)),
       }
       attempts++
       const cell = cells[candidate.y]?.[candidate.x]
@@ -77,8 +77,8 @@ export function generateMap(width: number, height: number, density: number, race
     }
 
     if (!pos) {
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
           const cell = cells[y]?.[x]
           if (cell?.type === CellType.RESOURCE && !bases.some((b) => distance(b, { x, y }) < MIN_RACE_DISTANCE)) {
             pos = { x, y }
