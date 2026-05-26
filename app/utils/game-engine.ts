@@ -408,5 +408,9 @@ export function processTurn(
 
   newMeta.races = newRaces
 
-  return { cells: newCells, races: newRaces, meta: newMeta }
+  const alive = newRaces.filter((r) => r.alive)
+  const gameOver = alive.length <= 1
+  const winner = gameOver && alive.length === 1 ? alive[0]!.name : null
+
+  return { cells: newCells, races: newRaces, meta: newMeta, gameOver, winner }
 }

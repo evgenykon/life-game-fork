@@ -8,6 +8,8 @@ export const useGameState = () => {
   const meta = ref<MapMeta | null>(null)
   const isRunning = ref(false)
   const isPaused = ref(false)
+  const gameOver = ref(false)
+  const winner = ref<string | null>(null)
 
   let timer: ReturnType<typeof setInterval> | null = null
 
@@ -33,6 +35,8 @@ export const useGameState = () => {
     meta.value = newMeta
     isRunning.value = true
     isPaused.value = false
+    gameOver.value = false
+    winner.value = null
 
     startTimer()
   }
@@ -43,6 +47,11 @@ export const useGameState = () => {
     cells.value = result.cells
     races.value = result.races
     meta.value = result.meta
+    if (result.gameOver) {
+      gameOver.value = true
+      winner.value = result.winner
+      stopTimer()
+    }
   }
 
   function togglePause() {
@@ -59,7 +68,9 @@ export const useGameState = () => {
     stopTimer()
     isRunning.value = false
     isPaused.value = false
+    gameOver.value = false
+    winner.value = null
   }
 
-  return { cells, races, meta, isRunning, isPaused, startGame, nextTurn, togglePause, stopGame }
+  return { cells, races, meta, isRunning, isPaused, gameOver, winner, startGame, nextTurn, togglePause, stopGame }
 }

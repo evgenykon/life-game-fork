@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ResourceType } from "~/utils/game-types"
 
-const { cells, races, meta, isRunning, isPaused, startGame, togglePause } = useGameState()
+const { cells, races, meta, isRunning, isPaused, gameOver, winner, startGame, togglePause } = useGameState()
 const { cellSize } = useZoom()
 
 const settingsWidth = ref(20)
@@ -85,7 +85,7 @@ function handleGameRestart() {
     </header>
 
     <div class="flex flex-1 overflow-hidden">
-      <main class="flex-1 overflow-hidden">
+      <main class="flex-1 overflow-hidden relative">
         <GameBoard
           v-if="cells"
           :cell-size="cellSize"
@@ -115,6 +115,20 @@ function handleGameRestart() {
                 border: '2px solid rgba(161, 98, 7, 0.7)',
               }"
             />
+          </div>
+        </div>
+
+        <div
+          v-if="gameOver"
+          class="absolute inset-0 z-20 flex items-center justify-center bg-black/70"
+        >
+          <div class="flex flex-col items-center gap-4 rounded-lg bg-card p-8 shadow-xl">
+            <p class="text-xl font-bold">
+              {{ winner ? `Победа: ${winner}` : "Ничья — все расы погибли" }}
+            </p>
+            <button class="btn btn-primary" @click="handleGameRestart">
+              Новая игра
+            </button>
           </div>
         </div>
       </main>
