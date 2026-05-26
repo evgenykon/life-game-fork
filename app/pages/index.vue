@@ -1,9 +1,9 @@
 <script setup lang="ts">
-const { state, selectedAction, playerCanAct, init, clickCell } = useGameState()
+const { state, start, stop } = useGameState()
 const { cellSize } = useZoom()
 
-const mapWidth = ref(100)
-const mapHeight = ref(100)
+const mapWidth = ref(20)
+const mapHeight = ref(20)
 const raceCount = ref(3)
 const resourceDensity = ref(40)
 const isRunning = ref(false)
@@ -44,17 +44,15 @@ function handleSettingsChange(settings: { width: number; height: number }) {
 }
 
 function handleGameStart() {
-  init(mapWidth.value, mapHeight.value, raceCount.value, resourceDensity.value)
+  start()
   isRunning.value = true
 }
 
 function handleGameRestart() {
-  init(mapWidth.value, mapHeight.value, raceCount.value, resourceDensity.value)
+  start()
 }
 
-function handleCellClick(pos: Position) {
-  clickCell(pos)
-}
+function handleCellClick() {}
 </script>
 
 <template>
@@ -67,11 +65,7 @@ function handleCellClick(pos: Position) {
       <main class="flex-1 overflow-hidden">
         <GameBoard
           v-if="state"
-          :map="state.map"
-          :selected-action="selectedAction"
-          :is-waiting-action="playerCanAct"
           :cell-size="cellSize"
-          @cell-click="handleCellClick"
         />
         <div
           v-else

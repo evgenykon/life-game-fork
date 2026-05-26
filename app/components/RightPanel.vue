@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Card, CardContent, CardHeader, CardTitle, Input, Label } from "effus-ui"
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from "effus-ui"
 
 const props = defineProps<{
   mapWidth: number
@@ -61,14 +61,14 @@ function handleRestart() {
 
     <Card>
       <CardContent class="flex flex-col gap-2 pt-4">
-        <button class="btn btn--default flex items-center" @click="handleStart">
+        <Button variant="default" class="flex items-center" @click="handleStart">
           <Icon :name="isRunning ? 'i-mdi-pause' : 'i-mdi-play'" class="mr-1" />
           {{ isRunning ? "Пауза" : "Старт" }}
-        </button>
-        <button class="btn btn--outline flex items-center" :disabled="!isRunning" @click="handleRestart">
+        </Button>
+        <Button variant="outline" class="flex items-center" :disabled="!isRunning" @click="handleRestart">
           <Icon name="i-mdi-restart" class="mr-1" />
           Рестарт
-        </button>
+        </Button>
       </CardContent>
     </Card>
   </div>

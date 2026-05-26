@@ -1,25 +1,13 @@
 <script setup lang="ts">
-import type { GameAction } from "~/utils/game-engine"
-
 const props = defineProps<{
-  map: Cell[][]
-  selectedAction: GameAction["type"] | null
-  isWaitingAction: boolean
   cellSize: number | "fit"
 }>()
 
-const emit = defineEmits<{
-  cellClick: [pos: Position]
-}>()
-
-function handleCellClick(pos: Position) {
-  emit("cellClick", pos)
-}
-
-const gridSize = computed(() => props.map[0]?.length ?? 1)
-const gridHeight = computed(() => props.map.length ?? 1)
-
+const canvasRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
+
+const GRID_SIZE = 20
+
 const containerWidth = ref(0)
 const containerHeight = ref(0)
 
@@ -36,6 +24,51 @@ function updateSize() {
   }
 }
 
+const resolvedCellSize = computed(() => {
+  if (props.cellSize === "fit") {
+    const w = Math.floor(containerWidth.value / GRID_SIZE)
+    const h = Math.floor(containerHeight.value / GRID_SIZE)
+    return Math.max(1, Math.min(w, h))
+  }
+  return props.cellSize
+})
+
+function drawGrid() {
+  const canvas = canvasRef.value
+  if (!canvas) return
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return
+
+  const size = resolvedCellSize.value
+  const totalSize = GRID_SIZE * size
+
+  canvas.width = totalSize
+  canvas.height = totalSize
+
+  ctx.fillStyle = "#000"
+  ctx.fillRect(0, 0, totalSize, totalSize)
+
+  ctx.strokeStyle = "rgba(161, 98, 7, 0.3)"
+  ctx.lineWidth = 1
+  ctx.setLineDash([2, 2])
+
+  for (let i = 0; i <= GRID_SIZE; i++) {
+    const pos = i * size + 0.5
+    ctx.beginPath()
+    ctx.moveTo(pos, 0)
+    ctx.lineTo(pos, totalSize)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(0, pos)
+    ctx.lineTo(totalSize, pos)
+    ctx.stroke()
+  }
+
+  ctx.setLineDash([])
+}
+
+watch([resolvedCellSize, containerWidth, containerHeight], drawGrid, { flush: "post" })
+
 onMounted(() => {
   updateSize()
   const observer = new ResizeObserver(() => {
@@ -47,40 +80,12 @@ onMounted(() => {
     observer.disconnect()
     if (resizeTimer) clearTimeout(resizeTimer)
   })
+  nextTick(drawGrid)
 })
-
-const { getResolvedCellSize } = useZoom()
-
-const resolvedCellSize = computed(() =>
-  getResolvedCellSize(containerWidth.value, containerHeight.value, gridSize.value, gridHeight.value),
-)
 </script>
 
 <template>
   <div ref="containerRef" class="h-full w-full overflow-auto bg-black">
-    <div
-      class="grid"
-      :style="{
-        gridTemplateColumns: `repeat(${gridSize}, ${resolvedCellSize}px)`,
-        gridTemplateRows: `repeat(${gridHeight}, ${resolvedCellSize}px)`,
-      }"
-    >
-      <template v-for="(row, y) in map" :key="y">
-        <GameCell
-          v-for="(cell, x) in row"
-          :key="`${x}-${y}`"
-          :cell="cell"
-          :cell-size="resolvedCellSize"
-          :is-selected-action="isWaitingAction && selectedAction !== null"
-          @click="handleCellClick"
-        />
-      </template>
-    </div>
+    <canvas ref="canvasRef" />
   </div>
 </template>
-
-<style scoped>
-.grid > * {
-  border: 1px dashed rgba(161, 98, 7, 0.3);
-}
-</style>
