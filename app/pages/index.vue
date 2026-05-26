@@ -1,12 +1,11 @@
 <script setup lang="ts">
-const { state, start, stop } = useGameState()
+const { mapHash, mapWidth, mapHeight, cells, races, meta, isRunning, startGame, loadFromHash } = useGameState()
 const { cellSize } = useZoom()
 
-const mapWidth = ref(20)
-const mapHeight = ref(20)
-const raceCount = ref(3)
-const resourceDensity = ref(40)
-const isRunning = ref(false)
+const settingsWidth = ref(20)
+const settingsHeight = ref(20)
+const settingsRaceCount = ref(3)
+const settingsDensity = ref(40)
 
 const emptyGridRef = ref<HTMLElement | null>(null)
 const emptyGridWidth = ref(0)
@@ -24,35 +23,37 @@ onMounted(() => {
   const observer = new ResizeObserver(updateEmptyGridSize)
   if (emptyGridRef.value) observer.observe(emptyGridRef.value)
   onUnmounted(() => observer.disconnect())
+
+  const hash = window.location.hash.slice(1)
+  if (hash && hash.length === 16) {
+    loadFromHash(hash, settingsWidth.value, settingsHeight.value)
+  }
 })
 
 const emptyCellSize = computed(() => {
   if (cellSize.value === "fit") {
-    const w = Math.floor(emptyGridWidth.value / mapWidth.value)
-    const h = Math.floor(emptyGridHeight.value / mapHeight.value)
+    const w = Math.floor(emptyGridWidth.value / settingsWidth.value)
+    const h = Math.floor(emptyGridHeight.value / settingsHeight.value)
     return Math.max(1, Math.min(w, h))
   }
   return cellSize.value
 })
 
-const gridWidthPx = computed(() => mapWidth.value * emptyCellSize.value)
-const gridHeightPx = computed(() => mapHeight.value * emptyCellSize.value)
+const gridWidthPx = computed(() => settingsWidth.value * emptyCellSize.value)
+const gridHeightPx = computed(() => settingsHeight.value * emptyCellSize.value)
 
 function handleSettingsChange(settings: { width: number; height: number }) {
-  mapWidth.value = settings.width
-  mapHeight.value = settings.height
+  settingsWidth.value = settings.width
+  settingsHeight.value = settings.height
 }
 
 function handleGameStart() {
-  start()
-  isRunning.value = true
+  startGame(settingsWidth.value, settingsHeight.value, settingsRaceCount.value, settingsDensity.value)
 }
 
 function handleGameRestart() {
-  start()
+  startGame(settingsWidth.value, settingsHeight.value, settingsRaceCount.value, settingsDensity.value)
 }
-
-function handleCellClick() {}
 </script>
 
 <template>
@@ -64,8 +65,9 @@ function handleCellClick() {}
     <div class="flex flex-1 overflow-hidden">
       <main class="flex-1 overflow-hidden">
         <GameBoard
-          v-if="state"
+          v-if="cells"
           :cell-size="cellSize"
+          :cells="cells"
         />
         <div
           v-else
@@ -96,10 +98,10 @@ function handleCellClick() {}
 
       <aside class="shrink-0 border-l border-border bg-card p-3">
         <RightPanel
-          :map-width="mapWidth"
-          :map-height="mapHeight"
-          :race-count="raceCount"
-          :resource-density="resourceDensity"
+          :map-width="settingsWidth"
+          :map-height="settingsHeight"
+          :race-count="settingsRaceCount"
+          :resource-density="settingsDensity"
           :is-running="isRunning"
           @settings-change="handleSettingsChange"
           @game-start="handleGameStart"

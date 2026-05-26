@@ -1,0 +1,31 @@
+export const ICON_PATHS: Record<string, string> = {
+  "i-mdi-home": "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z",
+  "i-mdi-factory": "M22 10v12h-6V10h6M14 10v12H2V10h12m7-8h-7v6h7V2M2 20V8l5-4 5 4v12H2m17-12h-3v4h3V8z",
+  "i-mdi-grain": "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2V7zm0 8h2v2h-2v-2z",
+  "i-mdi-forest": "M12 2L2 14h3v8h6v-6h2v6h6v-8h3L12 2z M17 14l-5-6-5 6h3v6h4v-6h3z",
+  "i-mdi-dirt": "M2 20h20v2H2v-2zm2-4h4v2H4v-2zm6 0h4v2h-4v-2zm6 0h4v2h-4v-2zM6 12h4v2H6v-2zm6 0h4v2h-4v-2zm6 0h4v2h-4v-2zM4 8h4v2H4V8zm6 0h4v2h-4V8zm6 0h4v2h-4V8z",
+  "i-mdi-rock": "M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z",
+  "i-mdi-gem": "M6 2l-6 8 12 12L24 10 18 2H6zm1.5 2h9L18 8l-6 6-6-6 1.5-4z",
+  "i-mdi-water-outline": "M12 2c-5.33 4.5-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.3-8-11.8zm0 18c-3.35 0-6-2.57-6-6.2 0-2.34 1.95-5.44 6-9.14 4.05 3.7 6 6.79 6 9.14 0 3.63-2.65 6.2-6 6.2z",
+  "i-mdi-beach": "M2 20h20v2H2v-2zm2-4h16v2H4v-2zm2-4h12v2H6v-2zm2-4h8v2H8V8zm2-4h4v2h-4V6z",
+  "i-mdi-sand": "M4 4h2v2H4V4zm4 0h2v2H8V4zm4 0h2v2h-2V4zm4 0h2v2h-2V4zM6 8h2v2H6V8zm4 0h2v2h-2V8zm4 0h2v2h-2V8zM4 12h2v2H4v-2zm4 0h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zM6 16h2v2H6v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z",
+  "i-mdi-snowflake": "M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22v-2z",
+  "i-mdi-water": "M12 20a6 6 0 0 0 6-6c0-4-6-10-6-10S6 10 6 14a6 6 0 0 0 6 6z",
+  "i-mdi-eye-off": "M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z",
+}
+
+export const ICON_COLORS: Record<string, string> = {
+  "i-mdi-home": "#f59e0b",
+  "i-mdi-factory": "#94a3b8",
+  "i-pinhead:plant": "#d4a373",
+  "i-material-symbols-light:forest-rounded": "#166534",
+  "i-ph:dots-nine-thin": "#8b5e3c",
+  "i-uil:mountains": "#6b7280",
+  "i-mdi-gem": "#a855f7",
+  "i-mdi-water-outline": "#0ea5e9",
+  "i-mdi-beach": "#fbbf24",
+  "i-fluent:grid-dots-16-regular": "#c9956b",
+  "i-mdi-snowflake": "#e0f2fe",
+  "i-mdi-water": "#3b82f6",
+  "i-mdi-eye-off": "#404040",
+}
