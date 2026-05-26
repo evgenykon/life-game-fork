@@ -1,4 +1,5 @@
 import type { CellData, RaceData, MapMeta } from "~/utils/game-types"
+import { randomPriorities } from "~/utils/game-types"
 import { generateMap } from "~/utils/game-map"
 import { processTurn } from "~/utils/game-engine"
 import { generateHash, clearOldStorage, saveMapToStorage, loadMapFromStorage } from "~/utils/hash"
@@ -55,6 +56,10 @@ export const useGameState = () => {
   function loadFromHash(hash: string, width: number, height: number) {
     const loaded = loadMapFromStorage(hash, width, height)
     if (loaded) {
+      loaded.meta.races = loaded.meta.races.map((r) => ({
+        ...r,
+        priorities: r.priorities ?? randomPriorities(),
+      }))
       mapHash.value = hash
       mapWidth.value = width
       mapHeight.value = height
@@ -62,8 +67,7 @@ export const useGameState = () => {
       races.value = loaded.meta.races
       meta.value = loaded.meta
       isRunning.value = true
-      isPaused.value = false
-      startTimer()
+      isPaused.value = true
     } else {
       startGame(width, height, 3, 40)
     }

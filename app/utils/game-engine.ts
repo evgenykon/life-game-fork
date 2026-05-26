@@ -47,12 +47,14 @@ function findExpandTarget(
   let best = candidates[0]!
   let bestDist = -1
   for (const c of candidates) {
+    let minDist = Infinity
     for (const b of bases) {
       const d = manhattan(b, c)
-      if (d > bestDist) {
-        bestDist = d
-        best = c
-      }
+      if (d < minDist) minDist = d
+    }
+    if (minDist > bestDist || (minDist === bestDist && Math.random() < 0.5)) {
+      bestDist = minDist
+      best = c
     }
   }
   return best
@@ -93,6 +95,49 @@ function findCellToStrip(
   return sorted[0] ?? null
 }
 
+function tryStartCapture(
+  race: RaceData,
+  cells: CellData[][],
+  width: number,
+  height: number
+) {
+  const target = findExpandTarget(race, cells, width, height)
+  if (!target) return
+  const cell = cells[target.y]![target.x]!
+  const cost = cell.resourceType ? RESOURCE_CAPTURE_COST[cell.resourceType] : 1
+  if (cost > 0) {
+    cell.captureProgress = 1
+    cell.captureCost = cost
+    cell.capturedBy = race.id
+  }
+}
+
+function tryStartFabric(race: RaceData, cells: CellData[][]) {
+  let bestCell: { pos: Position; cell: CellData; score: number } | null = null
+  for (const pos of race.controlledCells) {
+    const cell = cells[pos.y]?.[pos.x]
+    if (!cell || cell.fabricOwnerId || cell.type !== CellType.RESOURCE || !cell.resourceType) continue
+    const cost = RESOURCE_FABRIC_COST[cell.resourceType]
+    if (cost === null || cost <= 0) continue
+
+    const score = RESOURCE_YIELDS[cell.resourceType]
+    const isDepleted = cell.isDepleted ? 100 : 0
+    const totalScore = score.meal + score.water + score.material * 0.5 + (isDepleted * race.priorities.reinforcement) / 100
+
+    if (!bestCell || totalScore > bestCell.score) {
+      bestCell = { pos, cell, score: totalScore }
+    }
+  }
+  if (bestCell) {
+    const { pos, cell } = bestCell
+    const cost = RESOURCE_FABRIC_COST[cell.resourceType!]!
+    cell.fabricOwnerId = race.id
+    cell.fabricProgress = 0
+    cell.fabricCost = cost
+    cell.fabricComplete = false
+  }
+}
+
 export function processTurn(
   cells: CellData[][],
   races: RaceData[],
@@ -123,12 +168,21 @@ export function processTurn(
         const ny = pos.y + dir.y
         if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue
         const cell = newCells[ny]?.[nx]
-        if (cell && cell.captureProgress > 0 && cell.captureCost > 0 && cell.ownerId === null) {
+        if (cell && cell.captureProgress > 0 && cell.captureCost > 0 && cell.ownerId === null && cell.capturedBy === race.id) {
           capturePos = { x: nx, y: ny }
           break
         }
       }
       if (capturePos) break
+    }
+
+    let activeFabric: Position | null = null
+    for (const pos of race.controlledCells) {
+      const cell = newCells[pos.y]?.[pos.x]
+      if (cell && cell.fabricOwnerId === race.id && !cell.fabricComplete) {
+        activeFabric = pos
+        break
+      }
     }
 
     if (capturePos) {
@@ -141,16 +195,30 @@ export function processTurn(
         cell.capturedBy = null
         race.controlledCells.push(capturePos)
       }
-    } else {
-      const target = findExpandTarget(race, newCells, width, height)
-      if (target) {
-        const cell = newCells[target.y]![target.x]!
-        const cost = cell.resourceType ? RESOURCE_CAPTURE_COST[cell.resourceType] : 1
-        if (cost > 0) {
-          cell.captureProgress = 1
-          cell.captureCost = cost
-          cell.capturedBy = race.id
+    } else if (activeFabric) {
+      const cell = newCells[activeFabric.y]![activeFabric.x]!
+      if (race.resources.material >= 1) {
+        race.resources.material -= 1
+        cell.fabricProgress++
+        if (cell.fabricProgress >= cell.fabricCost) {
+          cell.fabricComplete = true
         }
+      }
+    } else {
+      const expansionRoll = race.priorities.expansion > 0 && Math.random() * 100 < race.priorities.expansion
+      const buildThreshold = Math.max(5, 50 - race.priorities.building * 0.4)
+      const canBuild = race.resources.material > buildThreshold
+
+      if (expansionRoll && canBuild) {
+        if (Math.random() < race.priorities.building / (race.priorities.expansion + race.priorities.building)) {
+          tryStartFabric(race, newCells)
+        } else {
+          tryStartCapture(race, newCells, width, height)
+        }
+      } else if (expansionRoll) {
+        tryStartCapture(race, newCells, width, height)
+      } else if (canBuild) {
+        tryStartFabric(race, newCells)
       }
     }
 
@@ -170,51 +238,6 @@ export function processTurn(
         cell.resourceAmount = 0
         cell.isDepleted = true
         cell.depletionCycles = 0
-      }
-    }
-
-    let activeFabricProgress: Position | null = null
-    for (const pos of race.controlledCells) {
-      const cell = newCells[pos.y]?.[pos.x]
-      if (cell && cell.fabricOwnerId === race.id && !cell.fabricComplete) {
-        activeFabricProgress = pos
-        break
-      }
-    }
-
-    if (activeFabricProgress) {
-      const cell = newCells[activeFabricProgress.y]![activeFabricProgress.x]!
-      if (race.resources.material >= 1) {
-        race.resources.material -= 1
-        cell.fabricProgress++
-        if (cell.fabricProgress >= cell.fabricCost) {
-          cell.fabricComplete = true
-        }
-      }
-    } else if (race.resources.material > 10) {
-      let bestCell: { pos: Position; cell: CellData } | null = null
-      for (const pos of race.controlledCells) {
-        const cell = newCells[pos.y]?.[pos.x]
-        if (!cell || cell.fabricOwnerId || cell.type !== CellType.RESOURCE || !cell.resourceType) continue
-        const cost = RESOURCE_FABRIC_COST[cell.resourceType]
-        if (cost === null || cost <= 0) continue
-        if (!bestCell) {
-          bestCell = { pos, cell }
-        } else {
-          const a = RESOURCE_YIELDS[cell.resourceType]
-          const b = RESOURCE_YIELDS[bestCell.cell.resourceType!]
-          if (a.meal + a.water > b.meal + b.water) {
-            bestCell = { pos, cell }
-          }
-        }
-      }
-      if (bestCell) {
-        const { pos, cell } = bestCell
-        const cost = RESOURCE_FABRIC_COST[cell.resourceType!]!
-        cell.fabricOwnerId = race.id
-        cell.fabricProgress = 0
-        cell.fabricCost = cost
-        cell.fabricComplete = false
       }
     }
 

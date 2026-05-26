@@ -17,6 +17,29 @@ export enum ResourceType {
   WATER = "WATER",
 }
 
+export interface RacePriorities {
+  expansion: number
+  building: number
+  war: number
+  reinforcement: number
+}
+
+export function randomPriorities(): RacePriorities {
+  const raw = {
+    expansion: Math.random(),
+    building: Math.random(),
+    war: Math.random(),
+    reinforcement: Math.random(),
+  }
+  const total = raw.expansion + raw.building + raw.war + raw.reinforcement
+  return {
+    expansion: Math.round((raw.expansion / total) * 100),
+    building: Math.round((raw.building / total) * 100),
+    war: Math.round((raw.war / total) * 100),
+    reinforcement: Math.round((raw.reinforcement / total) * 100),
+  }
+}
+
 export const RESOURCE_WEIGHTS: Record<ResourceType, number> = {
   [ResourceType.FIELD]: 15,
   [ResourceType.FOREST]: 15,
@@ -124,6 +147,7 @@ export interface RaceData {
   color: string
   tintColor: string
   borderColor: string
+  priorities: RacePriorities
   resources: { meal: number; water: number; material: number }
   baseCells: Position[]
   controlledCells: Position[]

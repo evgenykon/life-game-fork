@@ -18,6 +18,7 @@ const containerWidth = ref(0)
 const containerHeight = ref(0)
 
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
+let renderGen = 0
 const iconCache = new Map<string, HTMLCanvasElement>()
 
 const hoverCell = ref<{ x: number; y: number; cell: CellData } | null>(null)
@@ -71,6 +72,12 @@ const expandTargets = computed(() => {
   for (const race of props.races) {
     if (!race.alive) continue
 
+    const hasFabricBuild = race.controlledCells.some((p) => {
+      const c = props.cells?.[p.y]?.[p.x]
+      return c?.fabricOwnerId === race.id && !c.fabricComplete
+    })
+    if (hasFabricBuild) continue
+
     const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))
     const candidates: Array<{ x: number; y: number }> = []
 
@@ -97,12 +104,14 @@ const expandTargets = computed(() => {
     let best = candidates[0]!
     let bestDist = -1
     for (const c of candidates) {
+      let minDist = Infinity
       for (const b of bases) {
         const d = manhattan(b, c)
-        if (d > bestDist) {
-          bestDist = d
-          best = c
-        }
+        if (d < minDist) minDist = d
+      }
+      if (minDist > bestDist || (minDist === bestDist && (c.x * 7 + c.y * 13) % 2 === 0)) {
+        bestDist = minDist
+        best = c
       }
     }
     targets[race.id] = best
@@ -157,6 +166,8 @@ async function renderIcon(iconName: string, size: number, color: string): Promis
 }
 
 function drawGrid() {
+  renderGen++
+  const gen = renderGen
   const canvas = canvasRef.value
   if (!canvas) return
   const ctx = canvas.getContext("2d")!
@@ -268,6 +279,7 @@ function drawGrid() {
             ? ownerColor.color
             : ICON_COLORS[icon] ?? "rgba(255,255,255,0.7)"
           renderIcon(icon, size, color).then((iconCanvas) => {
+            if (gen !== renderGen) return
             if (props.cells?.[y]?.[x]) {
               ctx.drawImage(iconCanvas, x * size, y * size, size, size)
             }
@@ -313,7 +325,15 @@ const tooltipText = computed(() => {
     if (cell.fabricComplete) lines.push("Фабрика: готова")
     else lines.push(`Фабрика: ${cell.fabricProgress}/${cell.fabricCost}`)
   }
-  if (cell.ownerId) lines.push(`Владелец: ${cell.ownerId}`)
+  if (cell.ownerId) {
+    const race = props.races.find((r) => r.id === cell.ownerId)
+    if (race) {
+      lines.push(`Владелец: ${race.name}`)
+      if (cell.type === CellType.BASE) {
+        lines.push(`Приоритеты: exp ${race.priorities.expansion} / bld ${race.priorities.building} / war ${race.priorities.war} / rnf ${race.priorities.reinforcement}`)
+      }
+    }
+  }
   return lines.join("\n")
 })
 
