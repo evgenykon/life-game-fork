@@ -2,8 +2,7 @@
 
 ## Description
 
-Each cell can send and response messages to communicate with other world (based on Vue.js events). 
-There are one coordinator (main game engine) that use interval timer to run event-triggered logic.
+Выживание простейших цивилизаций на карте с ресурсами
 
 ## Виды игровых клеток (cells)
 
