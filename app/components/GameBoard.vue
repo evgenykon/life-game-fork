@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { RESOURCE_ICONS, RESOURCE_YIELDS, RESOURCE_CAPTURE_COST, RESOURCE_FABRIC_COST, CellType } from "~/utils/game-types"
+import { RESOURCE_ICONS, CellType } from "~/utils/game-types"
 import { ICON_PATHS, ICON_COLORS } from "~/utils/icon-paths"
+import { balance } from "~/utils/balance"
 import type { CellData, RaceData, Position } from "~/utils/game-types"
 
 const props = defineProps<{
@@ -172,7 +173,7 @@ const attackTargets = computed(() => {
       if (cell.fabricComplete) score += 50
       if (cell.fabricOwnerId && !cell.fabricComplete) score += 10
       if (cell.resourceType) {
-        const yields = RESOURCE_YIELDS[cell.resourceType]
+        const yields = balance.RESOURCE_YIELDS[cell.resourceType]
         score += yields.meal + yields.water + yields.material * 2
       }
       if (score > bestScore || (score === bestScore && (c.x * 7 + c.y * 13) % 2 === 0)) {
@@ -416,13 +417,29 @@ const tooltipText = computed(() => {
   }
   if (cell.resourceAmount > 0) lines.push(`Ресурс: ${cell.resourceAmount}`)
   if (!cell.ownerId && cell.resourceType) {
-    const capCost = RESOURCE_CAPTURE_COST[cell.resourceType]
+    const capCost = balance.RESOURCE_CAPTURE_COST[cell.resourceType]
     if (capCost > 0) lines.push(`Захват: ${capCost} циклов`)
-    const fabCost = RESOURCE_FABRIC_COST[cell.resourceType]
+    const fabCost = balance.RESOURCE_FABRIC_COST[cell.resourceType]
     if (fabCost !== null && fabCost > 0) lines.push(`Фабрика: ${fabCost} циклов`)
+    const yields = balance.RESOURCE_YIELDS[cell.resourceType]
+    const parts: string[] = []
+    if (yields.meal > 0) parts.push(`+${yields.meal} meal`)
+    if (yields.water > 0) parts.push(`+${yields.water} water`)
+    if (yields.material > 0) parts.push(`+${yields.material} material`)
+    if (parts.length > 0) lines.push(`Доход: ${parts.join(" ")}`)
   }
   if (cell.fabricOwnerId) {
-    if (cell.fabricComplete) lines.push("Фабрика: готова")
+    if (cell.fabricComplete) {
+      lines.push("Фабрика: готова")
+      if (cell.resourceType) {
+        const yields = balance.RESOURCE_YIELDS[cell.resourceType]
+        const parts: string[] = []
+        if (yields.meal > 0) parts.push(`+${yields.meal} meal`)
+        if (yields.water > 0) parts.push(`+${yields.water} water`)
+        if (yields.material > 0) parts.push(`+${yields.material} material`)
+        if (parts.length > 0) lines.push(`Доход: ${parts.join(" ")}`)
+      }
+    }
     else lines.push(`Фабрика: ${cell.fabricProgress}/${cell.fabricCost}`)
   }
   if (cell.ownerId) {
@@ -430,7 +447,7 @@ const tooltipText = computed(() => {
     if (race) {
       lines.push(`Владелец: ${race.name}`)
       if (cell.type === CellType.BASE) {
-        lines.push(`Приоритеты: exp ${race.priorities.expansion} / bld ${race.priorities.building} / war ${race.priorities.war} / rnf ${race.priorities.reinforcement}`)
+        lines.push(`Приоритеты: exp ${race.priorities.expansion} / bld ${race.priorities.building} / war ${race.priorities.war}`)
         lines.push(`Ресурсы: meal ${race.resources.meal} water ${race.resources.water} material ${race.resources.material}`)
       }
     }

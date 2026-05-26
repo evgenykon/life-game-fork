@@ -1,4 +1,5 @@
-import { CellType, RESOURCE_YIELDS, RACE_MAINTENANCE, DEPLETION_RECOVERY_CYCLES, RESOURCE_AMOUNT, RESOURCE_CAPTURE_COST, RESOURCE_FABRIC_COST } from "~/utils/game-types"
+import { CellType } from "~/utils/game-types"
+import { balance } from "~/utils/balance"
 import type { CellData, RaceData, MapMeta, Position } from "~/utils/game-types"
 
 const DIRS: Position[] = [
@@ -57,7 +58,7 @@ function findExpandTarget(
 
     let resourceBonus = 0
     if (cell.resourceType) {
-      const yields = RESOURCE_YIELDS[cell.resourceType]
+      const yields = balance.RESOURCE_YIELDS[cell.resourceType]
       resourceBonus = yields.meal * deficits.meal + yields.water * deficits.water + yields.material * deficits.material
     }
     const effectiveDist = minDist + resourceBonus * 0.5
@@ -107,9 +108,9 @@ function findCellToStrip(
 
 function calcDeficits(race: RaceData): { meal: number; water: number; material: number } {
   const cyclesLeft = {
-    meal: race.resources.meal / Math.max(1, RACE_MAINTENANCE.meal),
-    water: race.resources.water / Math.max(1, RACE_MAINTENANCE.water),
-    material: race.resources.material / Math.max(1, RACE_MAINTENANCE.material),
+    meal: race.resources.meal / Math.max(1, balance.RACE_MAINTENANCE.meal),
+    water: race.resources.water / Math.max(1, balance.RACE_MAINTENANCE.water),
+    material: race.resources.material / Math.max(1, balance.RACE_MAINTENANCE.material),
   }
   return {
     meal: Math.max(0, 10 - cyclesLeft.meal),
@@ -127,7 +128,7 @@ function tryStartCapture(
   const target = findExpandTarget(race, cells, width, height)
   if (!target) return
   const cell = cells[target.y]![target.x]!
-  const cost = cell.resourceType ? RESOURCE_CAPTURE_COST[cell.resourceType] : 1
+  const cost = cell.resourceType ? balance.RESOURCE_CAPTURE_COST[cell.resourceType] : 1
   if (cost > 0) {
     cell.captureProgress = 1
     cell.captureCost = cost
@@ -141,13 +142,14 @@ function tryStartFabric(race: RaceData, cells: CellData[][]) {
   for (const pos of race.controlledCells) {
     const cell = cells[pos.y]?.[pos.x]
     if (!cell || cell.fabricOwnerId || cell.type !== CellType.RESOURCE || !cell.resourceType) continue
-    const cost = RESOURCE_FABRIC_COST[cell.resourceType]
+    const cost = balance.RESOURCE_FABRIC_COST[cell.resourceType]
+
     if (cost === null || cost <= 0) continue
 
-    const yield_ = RESOURCE_YIELDS[cell.resourceType]
+    const yield_ = balance.RESOURCE_YIELDS[cell.resourceType]
     const deficitScore = yield_.meal * deficits.meal + yield_.water * deficits.water + yield_.material * deficits.material
     const isDepleted = cell.isDepleted ? 100 : 0
-    const totalScore = deficitScore + (isDepleted * race.priorities.reinforcement) / 100
+    const totalScore = deficitScore + (isDepleted * race.priorities.building) / 100
 
     if (!bestCell || totalScore > bestCell.score) {
       bestCell = { pos, cell, score: totalScore }
@@ -155,7 +157,7 @@ function tryStartFabric(race: RaceData, cells: CellData[][]) {
   }
   if (bestCell) {
     const { pos, cell } = bestCell
-    const cost = RESOURCE_FABRIC_COST[cell.resourceType!]!
+    const cost = balance.RESOURCE_FABRIC_COST[cell.resourceType!]!
     cell.fabricOwnerId = race.id
     cell.fabricProgress = 0
     cell.fabricCost = cost
@@ -200,7 +202,7 @@ function findAttackTarget(
     if (cell.fabricComplete) score += 50
     if (cell.fabricOwnerId && !cell.fabricComplete) score += 10
     if (cell.resourceType) {
-      const yields = RESOURCE_YIELDS[cell.resourceType]
+      const yields = balance.RESOURCE_YIELDS[cell.resourceType]
       score += yields.meal * (1 + deficits.meal) + yields.water * (1 + deficits.water) + yields.material * (2 + deficits.material)
     }
     if (score > bestScore || (score === bestScore && Math.random() < 0.5)) {
@@ -217,6 +219,60 @@ function tryStartAttack(race: RaceData, cells: CellData[][]) {
   const cell = cells[target.y]![target.x]!
   cell.attackProgress = 1
   cell.attackedBy = race.id
+}
+
+function tryReprioritize(race: RaceData, cycle: number) {
+  const threshold = balance.RACE_START_RESOURCES.meal * balance.REPRIORITIZE_THRESHOLD / 100
+  const lowMeal = race.resources.meal < threshold
+  const lowWater = race.resources.water < threshold
+  const lowMaterial = race.resources.material < threshold
+  if (!lowMeal && !lowWater && !lowMaterial) return
+  if (cycle - race.lastReprioritizeCycle < balance.REPRIORITIZE_COOLDOWN) return
+
+  const p = race.priorities
+  const entries: [string, number][] = Object.entries(p) as [string, number][]
+  entries.sort(([, a], [, b]) => a - b)
+  const lowestKey = entries[0]![0]
+  const lowestVal = entries[0]![1]
+
+  let boostKey = "expansion"
+  if (lowMaterial) boostKey = "building"
+  else if (lowMeal || lowWater) boostKey = "expansion"
+
+  const shift = Math.min(balance.REPRIORITIZE_SHIFT, lowestVal)
+  if (shift <= 0) return
+
+  p[lowestKey as keyof typeof p] -= shift
+  p[boostKey as keyof typeof p] += shift
+  race.lastReprioritizeCycle = cycle
+}
+
+function tryBoostWar(race: RaceData, cycle: number, newCells: CellData[][]) {
+  if (cycle - race.lastWarBoostCycle < 10) return
+  const isUnderAttack = newCells.some((row) =>
+    row.some((c) => c.attackProgress > 0 && c.attackedBy !== null && c.ownerId === race.id)
+  )
+  if (!isUnderAttack) return
+
+  const p = race.priorities
+  if (p.expansion < 10 || p.building < 10) return
+  p.expansion -= 10
+  p.building -= 10
+  p.war += 20
+  race.lastWarBoostCycle = cycle
+}
+
+function tryNormalizeWar(race: RaceData, cycle: number) {
+  if (race.lastWarBoostCycle < 0) return
+  if (cycle - race.lastWarBoostCycle < 50) return
+  const p = race.priorities
+  if (p.war <= 30) return
+  const excess = p.war - 30
+  const half = Math.floor(excess / 2)
+  p.war = 30
+  p.expansion += half
+  p.building += excess - half
+  race.lastWarBoostCycle = cycle
 }
 
 export function processTurn(
@@ -296,7 +352,7 @@ export function processTurn(
           if (nx < 0 || nx >= width || ny < 0 || ny >= height) return true
           return newCells[ny]![nx]!.ownerId === race.id
         })
-        const attackCost = isSurrounded ? 1 : 5
+        const attackCost = isSurrounded ? balance.LIBERATION_DURATION : balance.ATTACK_DURATION
 
         if (cell.attackProgress >= attackCost) {
           const defenderId = cell.ownerId!
@@ -336,12 +392,13 @@ export function processTurn(
       }
     } else {
       const hasAttack = findAttackTarget(race, newCells) !== null
-      const warRoll = race.priorities.war > 0 && hasAttack
+      const attackThreshold = Math.max(1, Math.round(10 - race.priorities.war * 0.1))
+      const warRoll = race.priorities.war >= balance.WAR_THRESHOLD && hasAttack && race.resources.material >= attackThreshold
       const hasExpand = findExpandTarget(race, newCells, width, height) !== null
       const expansionRoll = race.priorities.expansion > 0 && hasExpand
       const deficits = calcDeficits(race)
       const critical = deficits.meal > 5 || deficits.water > 5 || deficits.material > 5
-      const buildThreshold = critical ? 0 : Math.max(1, 10 - race.priorities.building * 0.1)
+      const buildThreshold = critical ? 0 : Math.max(1, Math.round(10 - race.priorities.building * 0.1))
       const canBuild = race.resources.material >= buildThreshold
 
       const weights: Array<{ action: () => void; weight: number }> = []
@@ -359,6 +416,8 @@ export function processTurn(
             break
           }
         }
+      } else if (!hasAttack && !hasExpand) {
+        tryStartFabric(race, newCells)
       }
     }
 
@@ -368,7 +427,7 @@ export function processTurn(
       if (cell.fabricOwnerId !== race.id || !cell.fabricComplete) continue
       if (!cell.resourceType) continue
 
-      const yield_ = RESOURCE_YIELDS[cell.resourceType]
+      const yield_ = balance.RESOURCE_YIELDS[cell.resourceType]
       race.resources.meal += yield_.meal
       race.resources.water += yield_.water
       race.resources.material += yield_.material
@@ -381,15 +440,19 @@ export function processTurn(
       }
     }
 
-    const neededMeal = Math.min(race.resources.meal, RACE_MAINTENANCE.meal)
-    const neededWater = Math.min(race.resources.water, RACE_MAINTENANCE.water)
-    const neededMaterial = Math.min(race.resources.material, RACE_MAINTENANCE.material)
+    tryReprioritize(race, newMeta.cycle)
+    tryBoostWar(race, newMeta.cycle, newCells)
+    tryNormalizeWar(race, newMeta.cycle)
+
+    const neededMeal = Math.min(race.resources.meal, balance.RACE_MAINTENANCE.meal)
+    const neededWater = Math.min(race.resources.water, balance.RACE_MAINTENANCE.water)
+    const neededMaterial = Math.min(race.resources.material, balance.RACE_MAINTENANCE.material)
 
     race.resources.meal -= neededMeal
     race.resources.water -= neededWater
     race.resources.material -= neededMaterial
 
-    if (neededMeal < RACE_MAINTENANCE.meal || neededWater < RACE_MAINTENANCE.water || neededMaterial < RACE_MAINTENANCE.material) {
+    if (neededMeal < balance.RACE_MAINTENANCE.meal || neededWater < balance.RACE_MAINTENANCE.water || neededMaterial < balance.RACE_MAINTENANCE.material) {
       const toStrip = findCellToStrip(race, newCells)
       if (toStrip) {
         const cell = newCells[toStrip.y]![toStrip.x]!
@@ -436,10 +499,10 @@ export function processTurn(
 
       if (cell.isDepleted) {
         cell.depletionCycles++
-        if (cell.depletionCycles >= DEPLETION_RECOVERY_CYCLES) {
+        if (cell.depletionCycles >= balance.DEPLETION_RECOVERY_CYCLES) {
           cell.isDepleted = false
           cell.depletionCycles = 0
-          cell.resourceAmount = RESOURCE_AMOUNT
+          cell.resourceAmount = balance.RESOURCE_AMOUNT
         }
       }
     }

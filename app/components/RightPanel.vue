@@ -15,6 +15,7 @@ const emit = defineEmits<{
   gameStart: []
   gameRestart: []
   togglePause: []
+  openBalance: []
 }>()
 
 const mapWidth = ref(props.mapWidth)
@@ -70,6 +71,10 @@ function handleRestart() {
         <Button variant="outline" class="flex items-center" :disabled="!isRunning" @click="handleRestart">
           <Icon name="i-mdi-restart" class="mr-1" />
           Рестарт
+        </Button>
+        <Button variant="outline" class="flex items-center" @click="emit('openBalance')">
+          <Icon name="i-mdi-chart-box-outline" class="mr-1" />
+          Баланс
         </Button>
       </CardContent>
     </Card>

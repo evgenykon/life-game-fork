@@ -1,8 +1,9 @@
-import { CellType, ResourceType, RESOURCE_WEIGHTS, RESOURCE_AMOUNT, MIN_RACE_DISTANCE, RACE_START_RESOURCES, RACE_COLORS, randomPriorities } from "~/utils/game-types"
+import { CellType, ResourceType, RACE_COLORS, randomPriorities } from "~/utils/game-types"
 import type { CellData, Position, RaceData, MapMeta } from "~/utils/game-types"
+import { balance } from "~/utils/balance"
 
 function weightedRandomResource(): ResourceType {
-  const entries = Object.entries(RESOURCE_WEIGHTS) as [ResourceType, number][]
+  const entries = Object.entries(balance.RESOURCE_WEIGHTS) as [ResourceType, number][]
   const total = entries.reduce((sum, [, w]) => sum + w, 0)
   let r = Math.random() * total
   for (const [type, weight] of entries) {
@@ -16,7 +17,7 @@ function createEmptyCell(): CellData {
   return {
     type: CellType.RESOURCE,
     resourceType: ResourceType.SAND,
-    resourceAmount: RESOURCE_AMOUNT,
+    resourceAmount: balance.RESOURCE_AMOUNT,
     ownerId: null,
     fabricOwnerId: null,
     fabricProgress: 0,
@@ -38,7 +39,7 @@ function createResourceCell(resourceType: ResourceType): CellData {
     ...createEmptyCell(),
     type: CellType.RESOURCE,
     resourceType,
-    resourceAmount: RESOURCE_AMOUNT,
+    resourceAmount: balance.RESOURCE_AMOUNT,
   }
 }
 
@@ -74,7 +75,7 @@ export function generateMap(width: number, height: number, density: number, race
       attempts++
       const cell = cells[candidate.y]?.[candidate.x]
       if (!cell || cell.type !== CellType.RESOURCE) continue
-      if (bases.some((b) => distance(b, candidate) < MIN_RACE_DISTANCE)) continue
+      if (bases.some((b) => distance(b, candidate) < balance.MIN_RACE_DISTANCE)) continue
       pos = candidate
       break
     }
@@ -83,7 +84,7 @@ export function generateMap(width: number, height: number, density: number, race
       for (let y = 1; y < height - 1; y++) {
         for (let x = 1; x < width - 1; x++) {
           const cell = cells[y]?.[x]
-          if (cell?.type === CellType.RESOURCE && !bases.some((b) => distance(b, { x, y }) < MIN_RACE_DISTANCE)) {
+          if (cell?.type === CellType.RESOURCE && !bases.some((b) => distance(b, { x, y }) < balance.MIN_RACE_DISTANCE)) {
             pos = { x, y }
             break
           }
@@ -109,14 +110,16 @@ export function generateMap(width: number, height: number, density: number, race
       tintColor: raceColor.tintColor,
       borderColor: raceColor.borderColor,
       priorities: randomPriorities(),
-      resources: { ...RACE_START_RESOURCES },
+      resources: { ...balance.RACE_START_RESOURCES },
       baseCells: [pos],
       controlledCells: [pos],
       alive: true,
+      lastReprioritizeCycle: 0,
+      lastWarBoostCycle: -999,
       history: {
-        meal: [RACE_START_RESOURCES.meal],
-        water: [RACE_START_RESOURCES.water],
-        material: [RACE_START_RESOURCES.material],
+        meal: [balance.RACE_START_RESOURCES.meal],
+        water: [balance.RACE_START_RESOURCES.water],
+        material: [balance.RACE_START_RESOURCES.material],
         territory: [1],
       },
     })

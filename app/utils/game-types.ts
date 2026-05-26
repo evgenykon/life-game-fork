@@ -21,7 +21,6 @@ export interface RacePriorities {
   expansion: number
   building: number
   war: number
-  reinforcement: number
 }
 
 export function randomPriorities(): RacePriorities {
@@ -29,14 +28,12 @@ export function randomPriorities(): RacePriorities {
     expansion: Math.random(),
     building: Math.random(),
     war: Math.random(),
-    reinforcement: Math.random(),
   }
-  const total = raw.expansion + raw.building + raw.war + raw.reinforcement
+  const total = raw.expansion + raw.building + raw.war
   return {
     expansion: Math.round((raw.expansion / total) * 100),
     building: Math.round((raw.building / total) * 100),
     war: Math.round((raw.war / total) * 100),
-    reinforcement: Math.round((raw.reinforcement / total) * 100),
   }
 }
 
@@ -160,6 +157,8 @@ export interface RaceData {
   controlledCells: Position[]
   alive: boolean
   history: RaceHistory
+  lastReprioritizeCycle: number
+  lastWarBoostCycle: number
 }
 
 export interface MapMeta {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RaceData, CellData } from "~/utils/game-types"
-import { CellType, RESOURCE_YIELDS } from "~/utils/game-types"
+import { CellType } from "~/utils/game-types"
 
 const props = defineProps<{
   race: RaceData | null
@@ -118,49 +118,10 @@ const sortedPriorities = computed(() => {
     expansion: "расширение",
     building: "строительство",
     war: "война",
-    reinforcement: "укрепление",
   }
   return Object.entries(p)
     .sort(([, a], [, b]) => b - a)
     .map(([key, val]) => ({ label: labels[key] ?? key, value: val }))
-})
-
-const resourceShortage = computed(() => {
-  const r = props.race
-  const c = props.cells
-  if (!r || !c) return 0
-  const h = c.length
-  const w = c[0]?.length ?? 0
-  const maxDist = w + h
-
-  function nearestDist(yieldKey: "meal" | "water" | "material"): number {
-    let best = maxDist
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const cell = c[y]![x]!
-        if (!cell.resourceType) continue
-        const yields = RESOURCE_YIELDS[cell.resourceType]
-        if (!yields || yields[yieldKey] <= 0) continue
-        for (const base of r.baseCells) {
-          const d = Math.abs(base.x - x) + Math.abs(base.y - y)
-          if (d < best) best = d
-        }
-      }
-    }
-    return best
-  }
-
-  const mealDist = nearestDist("meal")
-  const waterDist = nearestDist("water")
-  const materialDist = nearestDist("material")
-
-  const shortage = Math.max(
-    (maxDist - mealDist) / maxDist,
-    (maxDist - waterDist) / maxDist,
-    (maxDist - materialDist) / maxDist
-  )
-
-  return Math.round((1 - shortage) * 100)
 })
 
 const currentAction = computed(() => {
@@ -335,10 +296,6 @@ const currentAction = computed(() => {
         <div v-for="item in sortedPriorities" :key="item.label" class="flex justify-between">
           <span>{{ item.label }}</span>
           <span class="tabular-nums">{{ item.value }}%</span>
-        </div>
-        <div class="flex justify-between border-t border-border pt-1">
-          <span :class="resourceShortage > 50 ? 'text-orange-400' : ''">нехватка ресурсов</span>
-          <span :class="resourceShortage > 50 ? 'text-orange-400' : ''" class="tabular-nums">{{ resourceShortage }}%</span>
         </div>
       </div>
     </div>
