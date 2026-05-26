@@ -9,6 +9,21 @@ const settingsHeight = ref(20)
 const settingsRaceCount = ref(3)
 const settingsDensity = ref(40)
 
+const selectedRaceId = ref<string | null>(null)
+
+function handleSelectRace(raceId: string) {
+  selectedRaceId.value = selectedRaceId.value === raceId ? null : raceId
+}
+
+function handleCloseDrawer() {
+  selectedRaceId.value = null
+}
+
+const selectedRace = computed(() => {
+  if (!selectedRaceId.value) return null
+  return races.value.find((r) => r.id === selectedRaceId.value) ?? null
+})
+
 const emptyGridRef = ref<HTMLElement | null>(null)
 const emptyGridWidth = ref(0)
 const emptyGridHeight = ref(0)
@@ -20,11 +35,16 @@ function updateEmptyGridSize() {
   }
 }
 
+let emptyGridObserver: ResizeObserver | null = null
+
 onMounted(() => {
   updateEmptyGridSize()
-  const observer = new ResizeObserver(updateEmptyGridSize)
-  if (emptyGridRef.value) observer.observe(emptyGridRef.value)
-  onUnmounted(() => observer.disconnect())
+  emptyGridObserver = new ResizeObserver(updateEmptyGridSize)
+  if (emptyGridRef.value) emptyGridObserver.observe(emptyGridRef.value)
+})
+
+onUnmounted(() => {
+  if (emptyGridObserver) emptyGridObserver.disconnect()
 })
 
 const emptyCellSize = computed(() => {
@@ -102,6 +122,7 @@ function handleGameRestart() {
           :cell-size="cellSize"
           :cells="cells"
           :races="races"
+          @select-race="handleSelectRace"
         />
         <div
           v-else
@@ -158,6 +179,13 @@ function handleGameRestart() {
           @toggle-pause="togglePause"
         />
       </aside>
+      <RaceDrawer
+        v-if="selectedRace"
+        :race="selectedRace"
+        :cells="cells"
+        class="shrink-0"
+        @close="handleCloseDrawer"
+      />
     </div>
   </div>
 </template>

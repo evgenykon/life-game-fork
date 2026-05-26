@@ -113,6 +113,12 @@ export function generateMap(width: number, height: number, density: number, race
       baseCells: [pos],
       controlledCells: [pos],
       alive: true,
+      history: {
+        meal: [RACE_START_RESOURCES.meal],
+        water: [RACE_START_RESOURCES.water],
+        material: [RACE_START_RESOURCES.material],
+        territory: [1],
+      },
     })
   }
 

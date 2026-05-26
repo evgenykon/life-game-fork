@@ -9,6 +9,10 @@ const props = defineProps<{
   races: RaceData[]
 }>()
 
+const emit = defineEmits<{
+  selectRace: [raceId: string]
+}>()
+
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 
@@ -392,6 +396,19 @@ function handleMouseLeave() {
   drawGrid()
 }
 
+function handleClick(e: MouseEvent) {
+  const canvas = canvasRef.value
+  if (!canvas || !props.cells) return
+  const rect = canvas.getBoundingClientRect()
+  const size = resolvedCellSize.value
+  const x = Math.floor((e.clientX - rect.left + canvas.parentElement!.scrollLeft) / size)
+  const y = Math.floor((e.clientY - rect.top + canvas.parentElement!.scrollTop) / size)
+  const cell = props.cells[y]?.[x]
+  if (cell && cell.type === CellType.BASE && cell.ownerId) {
+    emit("selectRace", cell.ownerId)
+  }
+}
+
 const tooltipText = computed(() => {
   if (!hoverCell.value) return ""
   const { cell } = hoverCell.value
@@ -450,7 +467,7 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="relative h-full w-full overflow-auto bg-black">
-    <canvas ref="canvasRef" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave" />
+    <canvas ref="canvasRef" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave" @click="handleClick" />
     <div
       v-if="hoverCell && tooltipText"
       class="pointer-events-none absolute z-10 whitespace-pre rounded bg-card px-2 py-1 text-xs text-card-foreground shadow-lg"

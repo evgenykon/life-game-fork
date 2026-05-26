@@ -141,6 +141,13 @@ export const RACE_COLORS: Array<{ color: string; tintColor: string; borderColor:
   { color: "#eab308", tintColor: "rgba(234,179,8,0.12)", borderColor: "rgba(234,179,8,0.4)" },
 ]
 
+export interface RaceHistory {
+  meal: number[]
+  water: number[]
+  material: number[]
+  territory: number[]
+}
+
 export interface RaceData {
   id: string
   name: string
@@ -152,6 +159,7 @@ export interface RaceData {
   baseCells: Position[]
   controlledCells: Position[]
   alive: boolean
+  history: RaceHistory
 }
 
 export interface MapMeta {

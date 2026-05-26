@@ -331,8 +331,10 @@ export function processTurn(
         }
       }
     } else {
-      const warRoll = race.priorities.war > 0 && Math.random() * 100 < race.priorities.war && findAttackTarget(race, newCells) !== null
-      const expansionRoll = race.priorities.expansion > 0 && Math.random() * 100 < race.priorities.expansion
+      const hasAttack = findAttackTarget(race, newCells) !== null
+      const warRoll = race.priorities.war > 0 && hasAttack
+      const hasExpand = findExpandTarget(race, newCells, width, height) !== null
+      const expansionRoll = race.priorities.expansion > 0 && hasExpand
       const deficits = calcDeficits(race)
       const critical = deficits.meal > 5 || deficits.water > 5 || deficits.material > 5
       const buildThreshold = critical ? 0 : Math.max(1, 10 - race.priorities.building * 0.1)
@@ -416,6 +418,11 @@ export function processTurn(
         }
       }
     }
+
+    race.history.meal.push(race.resources.meal)
+    race.history.water.push(race.resources.water)
+    race.history.material.push(race.resources.material)
+    race.history.territory.push(race.controlledCells.length)
   }
 
   for (let y = 0; y < newCells.length; y++) {
