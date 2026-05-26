@@ -1,4 +1,4 @@
-# 'My Browser Game' 
+# 'Life Game' 
 
 ## Description
 
