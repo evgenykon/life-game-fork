@@ -36,17 +36,17 @@
 
 ## Список ресурсов
 
-| Resource | Ru         | Восстановление | Тип после истощения | Тип заброски | Значение для расы | Стоимость фабрики |
-|----------|------------|----------------|---------------------|--------------|-------------------|-------------------|
-| FIELD    | поле зерна | 5              | GRUNT               | FOREST       | meal              | 5                 |
-| FOREST   | лес        | 10             | GRUNT               | FOREST       | material          | 5                 |
-| GRUNT    | почва      | 10             | SAND                | FOREST       | -                 | -                 |
-| ROCK     | камень     | 30             | SAND                | ROCK         | material          | 10                |
-| MINERAL  | минералы   | 30             | ROCK                | MINERAL      | material          | 10                |
-| SWAMP    | болото     | 5              | GRUNT               | SWAMP        | meal, material    | 10                |
-| SAND     | песок      | 0              | SAND                | GRUNT        | -                 | -                 |
-| SNOW     | снег       | 5              | GRUNT               | SNOW         | water             | 10                |
-| WATER    | вода       | 5              | SWAMP               | WATER        | water             | 5                 |
+| Resource | Ru         | Вес | Восстановление | Тип после истощения | Тип заброски | Значение для расы | Стоимость фабрики |
+|----------|------------|-----|----------------|---------------------|--------------|-------------------|-------------------|
+| FIELD    | поле зерна | 15  | 5              | GRUNT               | FOREST       | meal              | 5                 |
+| FOREST   | лес        | 15  | 10             | GRUNT               | FOREST       | material          | 5                 |
+| GRUNT    | почва      | 20  | 10             | SAND                | FOREST       | -                 | -                 |
+| ROCK     | камень     | 10  | 30             | SAND                | ROCK         | material          | 10                |
+| MINERAL  | минералы   | 5   | 30             | ROCK                | MINERAL      | material          | 10                |
+| SWAMP    | болото     | 10  | 5              | GRUNT               | SWAMP        | meal, material    | 10                |
+| SAND     | песок      | 10  | 0              | SAND                | GRUNT        | -                 | -                 |
+| SNOW     | снег       | 5   | 5              | GRUNT               | SNOW         | water             | 10                |
+| WATER    | вода       | 10  | 5              | SWAMP               | WATER        | water             | 5                 |
 
 ## Ход игры
 
@@ -61,3 +61,20 @@
 - Раса исчезает (проигрывает) если у неё исчезает последняя база. 
 - В случае если у расы истощился любой из ресурсов, от края её территории отнимается 1 клетка каждый цикл.
 - В первую очередь отнимаются истощенные ресурсы, потом строящиеся фабрики, потом действующие фабрики, в последнюю очередь отнимаются базы.
+
+## Иконки клеток
+
+| Тип / Ресурс | Иконка (MDI) |
+|---|---|
+| base | `i-mdi-home` |
+| fabric | `i-mdi-factory` |
+| shadowed | `i-mdi-eye-off` |
+| FIELD | `i-mdi-grain` |
+| FOREST | `i-mdi-tree` |
+| GRUNT | `i-mdi-dirt` |
+| ROCK | `i-mdi-rock` |
+| MINERAL | `i-mdi-gem` |
+| SWAMP | `i-mdi-water-outline` |
+| SAND | `i-mdi-beach` |
+| SNOW | `i-mdi-snowflake` |
+| WATER | `i-mdi-water` |
