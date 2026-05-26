@@ -3,6 +3,7 @@ node_modules
 /dist
 .nuxt
 .idea
+.output
 
 # local env files
 .env
