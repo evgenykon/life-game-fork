@@ -81,10 +81,7 @@ const expandTargets = computed(() => {
           (c.captureProgress > 0 && c.capturedBy === race.id && c.ownerId === null) ||
           (c.attackProgress > 0 && c.attackedBy === race.id)
       )
-    ) || race.controlledCells.some((p) => {
-      const c = props.cells?.[p.y]?.[p.x]
-      return c?.fabricOwnerId === race.id && !c.fabricComplete
-    })
+    )
     if (hasAction) continue
 
     const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))
@@ -144,10 +141,7 @@ const attackTargets = computed(() => {
           (c.captureProgress > 0 && c.capturedBy === race.id && c.ownerId === null) ||
           (c.attackProgress > 0 && c.attackedBy === race.id)
       )
-    ) || race.controlledCells.some((p) => {
-      const c = props.cells?.[p.y]?.[p.x]
-      return c?.fabricOwnerId === race.id && !c.fabricComplete
-    })
+    )
     if (hasAction) continue
 
     const ownedSet = new Set(race.controlledCells.map((p) => `${p.x},${p.y}`))

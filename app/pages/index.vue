@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ResourceType } from "~/utils/game-types"
 
-const { cells, races, meta, isRunning, isPaused, gameOver, winner, startGame, togglePause } = useGameState()
+const { cells, races, meta, isRunning, isPaused, gameOver, winner, startGame, togglePause, stopGame } = useGameState()
 const { cellSize } = useZoom()
 
 const settingsWidth = ref(20)
@@ -10,6 +10,7 @@ const settingsRaceCount = ref(3)
 const settingsDensity = ref(40)
 
 const selectedRaceId = ref<string | null>(null)
+const menuOpen = ref(false)
 
 function handleSelectRace(raceId: string) {
   selectedRaceId.value = selectedRaceId.value === raceId ? null : raceId
@@ -108,11 +109,36 @@ function handleGameRestart() {
           <Icon :name="isPaused ? 'i-mdi-play' : 'i-mdi-pause'" class="h-3.5 w-3.5 shrink-0" />
           {{ isPaused ? "Продолжить" : "Пауза" }}
         </button>
-        <button class="btn btn-outline btn-sm text-xs inline-flex items-center gap-1" @click="handleGameRestart">
-          <Icon name="i-mdi-restart" class="h-3.5 w-3.5 shrink-0" />
-          Рестарт
-        </button>
       </template>
+
+      <div class="relative shrink-0">
+        <button class="btn btn-ghost btn-sm" @click="menuOpen = !menuOpen">
+          <Icon name="i-mdi-menu" />
+        </button>
+        <div
+          v-if="menuOpen"
+          class="absolute right-0 top-full z-30 mt-1 w-40 rounded border border-border bg-card py-1 shadow-lg"
+        >
+          <button class="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent" @click="togglePause(); menuOpen = false">
+            <Icon :name="isPaused ? 'i-mdi-play' : 'i-mdi-pause'" class="h-4 w-4" />
+            {{ isPaused ? "Продолжить" : "Пауза" }}
+          </button>
+          <button class="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent" @click="handleGameRestart(); menuOpen = false">
+            <Icon name="i-mdi-restart" class="h-4 w-4" />
+            Рестарт
+          </button>
+          <hr class="mx-2 my-1 border-border" />
+          <button class="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent" @click="stopGame(); menuOpen = false">
+            <Icon name="i-mdi-stop" class="h-4 w-4" />
+            Стоп
+          </button>
+        </div>
+        <div
+          v-if="menuOpen"
+          class="fixed inset-0 z-20"
+          @click="menuOpen = false"
+        />
+      </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">

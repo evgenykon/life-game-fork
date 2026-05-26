@@ -186,12 +186,11 @@ const currentAction = computed(() => {
     }
   }
 
-  for (const pos of r.controlledCells) {
-    const cell = c[pos.y]![pos.x]!
-    if (cell.fabricOwnerId === r.id && !cell.fabricComplete) {
-      return `Фабрика: ${cell.fabricProgress}/${cell.fabricCost}`
-    }
-  }
+  const fabricCount = r.controlledCells.filter((p) => {
+    const cc = c[p.y]![p.x]!
+    return cc.fabricOwnerId === r.id && !cc.fabricComplete
+  }).length
+  if (fabricCount > 0) return `Фабрики: ${fabricCount} стр.`
 
   const ownedSet = new Set(r.controlledCells.map((p) => `${p.x},${p.y}`))
   let hasExpandTarget = false

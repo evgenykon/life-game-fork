@@ -271,12 +271,16 @@ export function processTurn(
       if (attackPos) break
     }
 
-    let activeFabric: Position | null = null
     for (const pos of race.controlledCells) {
       const cell = newCells[pos.y]?.[pos.x]
       if (cell && cell.fabricOwnerId === race.id && !cell.fabricComplete) {
-        activeFabric = pos
-        break
+        if (race.resources.material >= 1) {
+          race.resources.material -= 1
+          cell.fabricProgress++
+          if (cell.fabricProgress >= cell.fabricCost) {
+            cell.fabricComplete = true
+          }
+        }
       }
     }
 
@@ -285,7 +289,16 @@ export function processTurn(
       if (race.resources.material >= 1) {
         race.resources.material -= 1
         cell.attackProgress++
-        if (cell.attackProgress >= 5) {
+
+        const isSurrounded = DIRS.every((d) => {
+          const nx = attackPos.x + d.x
+          const ny = attackPos.y + d.y
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) return true
+          return newCells[ny]![nx]!.ownerId === race.id
+        })
+        const attackCost = isSurrounded ? 1 : 5
+
+        if (cell.attackProgress >= attackCost) {
           const defenderId = cell.ownerId!
           cell.ownerId = race.id
           cell.attackProgress = 0
@@ -320,15 +333,6 @@ export function processTurn(
         cell.attackProgress = 0
         cell.attackedBy = null
         race.controlledCells.push(capturePos)
-      }
-    } else if (activeFabric) {
-      const cell = newCells[activeFabric.y]![activeFabric.x]!
-      if (race.resources.material >= 1) {
-        race.resources.material -= 1
-        cell.fabricProgress++
-        if (cell.fabricProgress >= cell.fabricCost) {
-          cell.fabricComplete = true
-        }
       }
     } else {
       const hasAttack = findAttackTarget(race, newCells) !== null

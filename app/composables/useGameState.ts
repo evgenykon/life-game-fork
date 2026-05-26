@@ -66,6 +66,9 @@ export const useGameState = () => {
 
   function stopGame() {
     stopTimer()
+    cells.value = null
+    races.value = []
+    meta.value = null
     isRunning.value = false
     isPaused.value = false
     gameOver.value = false
