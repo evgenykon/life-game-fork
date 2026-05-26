@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RESOURCE_ICONS, CellType } from "~/utils/game-types"
-import { ICON_COLORS } from "~/utils/icon-paths"
+import { ICON_PATHS, ICON_COLORS } from "~/utils/icon-paths"
 import type { CellData, RaceData } from "~/utils/game-types"
 
 const props = defineProps<{
@@ -18,7 +18,6 @@ const containerWidth = ref(0)
 const containerHeight = ref(0)
 
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
-let renderGen = 0
 const iconCache = new Map<string, HTMLCanvasElement>()
 
 const hoverCell = ref<{ x: number; y: number; cell: CellData } | null>(null)
@@ -120,54 +119,34 @@ const expandTargets = computed(() => {
   return targets
 })
 
-async function renderIcon(iconName: string, size: number, color: string): Promise<HTMLCanvasElement> {
-  const cacheKey = `v3-${iconName}-${size}-${color}`
+function renderIcon(iconName: string, size: number, color: string): HTMLCanvasElement | null {
+  const cacheKey = `v4-${iconName}-${size}-${color}`
   if (iconCache.has(cacheKey)) return iconCache.get(cacheKey)!
 
-  const iconSize = size * 0.6
-  const offset = (size - iconSize) / 2
+  const data = ICON_PATHS[iconName]
+  if (!data) return null
 
-  const raw = iconName.replace('i-', '')
-  let collection: string
-  let name: string
-  
-  if (raw.includes(':')) {
-    const parts = raw.split(':')
-    collection = parts[0] ?? ""
-    name = parts[1] ?? ""
-  } else {
-    const parts = raw.split('-')
-    collection = parts[0]!
-    name = parts.slice(1).join('-')
-  }
-  
-  const url = `https://api.iconify.design/${collection}/${name}.svg?color=${encodeURIComponent(color)}`
-
-  const response = await fetch(url)
-  const svgText = await response.text()
-
-  const blob = new Blob([svgText], { type: 'image/svg+xml' })
-  const imgUrl = URL.createObjectURL(blob)
-  const img = new Image()
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve()
-    img.onerror = reject
-    img.src = imgUrl
-  })
-  URL.revokeObjectURL(imgUrl)
-
-  const offscreen = document.createElement('canvas')
+  const offscreen = document.createElement("canvas")
   offscreen.width = size
   offscreen.height = size
-  const ctx = offscreen.getContext('2d')!
-  ctx.drawImage(img, offset, offset, iconSize, iconSize)
+  const ctx = offscreen.getContext("2d")!
+
+  const path = new Path2D(data.d)
+
+  const iconSize = size * 0.8
+  const offset = (size - iconSize) / 2
+  const scale = iconSize / Math.max(data.vbW, data.vbH)
+
+  ctx.translate(offset, offset)
+  ctx.scale(scale, scale)
+  ctx.fillStyle = color
+  ctx.fill(path)
+
   iconCache.set(cacheKey, offscreen)
   return offscreen
 }
 
 function drawGrid() {
-  renderGen++
-  const gen = renderGen
   const canvas = canvasRef.value
   if (!canvas) return
   const ctx = canvas.getContext("2d")!
@@ -278,12 +257,10 @@ function drawGrid() {
           const color = (cell.type === CellType.BASE || cell.fabricComplete) && ownerColor
             ? ownerColor.color
             : ICON_COLORS[icon] ?? "rgba(255,255,255,0.7)"
-          renderIcon(icon, size, color).then((iconCanvas) => {
-            if (gen !== renderGen) return
-            if (props.cells?.[y]?.[x]) {
-              ctx.drawImage(iconCanvas, x * size, y * size, size, size)
-            }
-          })
+          const iconCanvas = renderIcon(icon, size, color)
+          if (iconCanvas) {
+            ctx.drawImage(iconCanvas, x * size, y * size, size, size)
+          }
         }
       }
     }
@@ -331,6 +308,7 @@ const tooltipText = computed(() => {
       lines.push(`Владелец: ${race.name}`)
       if (cell.type === CellType.BASE) {
         lines.push(`Приоритеты: exp ${race.priorities.expansion} / bld ${race.priorities.building} / war ${race.priorities.war} / rnf ${race.priorities.reinforcement}`)
+        lines.push(`Ресурсы: meal ${race.resources.meal} water ${race.resources.water} material ${race.resources.material}`)
       }
     }
   }
